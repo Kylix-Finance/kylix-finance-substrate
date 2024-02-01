@@ -1,10 +1,14 @@
 # PolkaLend
 
-PolkaLend Finance is a substrate Dapp lending platform that connects borrowers and lenders allowing them to deposit and borrow assets on Polkadot. Depositors can provide liquidity to earn interest as a stable passive income, while borrowers can leverage their assets without selling them out.
+PolkaLend Finance is a substrate Dapp that connects borrowers and lenders together, allowing them to deposit and borrow assets on Polkadot. Depositors can provide liquidity to earn interest as a stable passive income, while borrowers can leverage their assets without selling them out.
+
+## User Flow
+
+![polkalend flow](./polkalend.png)
 
 ## How does it work
 
-Polkalend lets users borrow for a fee and lend cryptocurrencies for an interest. An user can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
+Polkalend lets users to borrow assets for a fee and/or to lend them for an interest. An borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
 
 By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interests from being borrowed on Polkalend Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
 
@@ -12,7 +16,7 @@ Liquidation Protection
 
 A collateralized loan gives a borrower more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for collateral’s value if it decreases. Once your collateral falls below the loan's value or some other given value, the funds are sold or transferred to the lender.
 
-## Internals and Exposed Extrinsics
+## Exposed Extrinsics
 
 RamenSwap exposes to the world 5 defined extrinsics:
 
