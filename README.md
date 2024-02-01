@@ -12,6 +12,51 @@ Liquidation Protection
 
 A collateralized loan gives a borrower more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for collateral’s value if it decreases. Once your collateral falls below the loan's value or some other given value, the funds are sold or transferred to the lender.
 
+## Internals and Exposed Extrinsics
+
+RamenSwap exposes to the world 5 defined extrinsics:
+
+<details>
+<summary><h3>do_supply</h3></summary>
+
+#### Parameters:
+
+#### Errors:
+
+#### Tests
+</details>
+
+<details>
+<summary><h3>do_withdraw</h3></summary>
+
+#### Parameters:
+
+#### Errors:
+
+#### Tests
+</details>
+
+<details>
+<summary><h3>do_borrow</h3></summary>
+
+#### Parameters:
+ 
+#### Errors:
+
+#### Tests
+</details>
+
+<details>
+<summary><h3>do_repay</h3></summary>
+
+
+#### Parameters:
+ 
+#### Errors:
+
+#### Tests
+</details>
+
 
 
  
