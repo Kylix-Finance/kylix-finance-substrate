@@ -1,6 +1,12 @@
-# PolkaLend
+# PolkaLend Finance - The Lending pallet
+### PolkaLend is a lending POC that implements AAVE functionalities in a substrate Dapp
 
-PolkaLend Finance is a substrate Dapp that connects borrowers and lenders together, allowing them to deposit and borrow assets on Polkadot. Depositors can provide liquidity to earn interest as a stable passive income, while borrowers can leverage their assets without selling them out.
+[<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/polkalend-finance/)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+[![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
+[![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+
+PolkaLend Finance is a non-custodial substrate Dapp where users can participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an overcollateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
 ## User Flow
 
@@ -67,30 +73,12 @@ RamenSwap exposes to the world 5 defined extrinsics:
 
 ## Getting Started
 
-Depending on your operating system and Rust version, there might be additional packages required to compile this template.
-Check the [Install](https://docs.substrate.io/install/) instructions for your platform for the most common dependencies.
-Alternatively, you can use one of the [alternative installation](#alternatives-installations) options.
-
 ### Build
 
 Use the following command to build the node without launching it:
 
 ```sh
 cargo build --release
-```
-
-### Embedded Docs
-
-After you build the project, you can use the following command to explore its parameters and subcommands:
-
-```sh
-./target/release/node-template -h
-```
-
-You can generate and view the [Rust Docs](https://doc.rust-lang.org/cargo/commands/cargo-doc.html) for this template with this command:
-
-```sh
-cargo +nightly doc --open
 ```
 
 ### Single-Node Development Chain
@@ -120,7 +108,6 @@ Development chains:
 - Use the **Alice** account as the default `sudo` account.
 - Are preconfigured with a genesis state (`/node/src/chain_spec.rs`) that includes several prefunded development accounts.
 
-
 To persist chain state between runs, specify a base path by running a command similar to the following:
 
 ```sh
@@ -144,10 +131,6 @@ db keystore network
 After you start the node template locally, you can interact with it using the hosted version of the [Polkadot/Substrate Portal](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) front-end by connecting to the local node endpoint.
 A hosted version is also available on [IPFS (redirect) here](https://dotapps.io/) or [IPNS (direct) here](ipns://dotapps.io/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer).
 You can also find the source code and instructions for hosting your own instance on the [polkadot-js/apps](https://github.com/polkadot-js/apps) repository.
-
-### Multi-Node Local Testnet
-
-If you want to see the multi-node consensus algorithm in action, see [Simulate a network](https://docs.substrate.io/tutorials/build-a-blockchain/simulate-network/).
 
 ## Template Structure
 
@@ -205,17 +188,14 @@ A FRAME pallet is comprised of a number of blockchain primitives, including:
 
 Each pallet has its own `Config` trait which serves as a configuration interface to generically define the types and parameters it depends on.
 
-## Alternatives Installations
+### Future Improvements
 
-Instead of installing dependencies and building this source directly, consider the following alternatives.
+0. TODO
 
-### Nix
+### Experimental and cool stuff
 
-Install [nix](https://nixos.org/) and
-[nix-direnv](https://github.com/nix-community/nix-direnv) for a fully plug-and-play
-experience for setting up the development environment.
-To get all the correct dependencies, activate direnv `direnv allow`.
+## Contribution
 
-### Docker
+PolkaLend is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
 
-Please follow the [Substrate Docker instructions here](https://github.com/paritytech/substrate/blob/master/docker/README.md) to build the Docker container with the Substrate Node Template binary.
+I appreciate very much your feedback!
