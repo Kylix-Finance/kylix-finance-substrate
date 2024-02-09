@@ -6,7 +6,7 @@
 [![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
 [![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-PolkaLend Finance is a non-custodial substrate Dapp where users can participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an overcollateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
+PolkaLend Finance is a non-custodial substrate Dapp that allows users to participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an overcollateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
 ## User Flow
 
