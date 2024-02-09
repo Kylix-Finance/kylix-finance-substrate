@@ -18,7 +18,7 @@ Polkalend lets users to borrow assets for a fee and/or to lend them for an inter
 
 By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interests from being borrowed on Polkalend Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
 
-Liquidation Protection
+### Liquidation Protection
 
 A collateralized loan gives a borrower more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for collateral’s value if it decreases. Once your collateral falls below the loan's value or some other given value, the funds are sold or transferred to the lender.
 
