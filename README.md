@@ -1,5 +1,5 @@
-# PolkaLend Finance - The Lending pallet
-### PolkaLend is a lending POC that implements AAVE functionalities in a substrate Dapp
+# PolyLend Finance - The cross-chain Lending pallet
+### PolyLend is a lending POC that implements AAVE functionalities in a substrate Dapp for cross-chain assets
 
 [<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/polkalend-finance/)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
