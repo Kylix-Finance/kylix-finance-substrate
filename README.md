@@ -8,6 +8,8 @@
 
 PolkaLend Finance is a non-custodial substrate Dapp that allows users to participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an overcollateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
+:warning: It is **not a production-ready substrate node**, but a POC built for learning purposes. It is discouraged to use this code 'as-is' in a production runtime.
+
 ## User Flow
 
 ![polkalend flow](./polkalend.png)

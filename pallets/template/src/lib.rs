@@ -1,13 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
 
 pub type AssetIdOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<
 	<T as frame_system::Config>::AccountId,
 >>::AssetId; 
+
+pub type AssetBalanceOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::Balance; 
 
 #[cfg(test)]
 mod mock;
@@ -22,9 +23,10 @@ pub use weights::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_benchmarking::v2::assert_type_eq_all;
 	use super::*;
 	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+	use frame_system::{pallet_prelude::*, AccountInfo, Config};
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -38,14 +40,30 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	pub struct ReservePool<T: Config> {
+	// Asset Pool Key 
+	pub struct AssetPool<T: Config> {
 		asset: AssetIdOf<T>,
 	}
-	
+
+	/// Reserve Lending Pool with balance free and locked.
+	pub struct LendingPool<T: Config> {
+		pub balance_free: AssetBalanceOf<T>,
+		pub balance_locked: AssetBalanceOf<T>,
+	}
+
+	// Extrinsics
+	// supply, withdraw
+	// borrow, repay
+	// add_lending_pool
+	// activate_lending_pool
+	// deactivate_lending_pool
+	// remove_lending_pool
+	// update rate_model, update kink
+	// claim_reward
 
 	#[pallet::storage]
 	#[pallet::getter(fn reserve_pools)]
-	pub type ReservePools<T> = StorageMap<_, Blake2_128Concat, ReservePool<T>, LiquidityPoolEntity<T>, ValueQuery>;
+	pub type ReservePools<T> = StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>, ValueQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/main-docs/build/events-errors/
@@ -78,6 +96,7 @@ pub mod pallet {
 		pub fn do_supply(origin: OriginFor<T>, something: u32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::SomethingStored { something, who });
+			
 			Ok(())
 		}
 
