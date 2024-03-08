@@ -31,11 +31,24 @@ RamenSwap exposes to the world 5 defined extrinsics:
 <details>
 <summary><h3>do_supply</h3></summary>
 
+Create a new lending pool. Deposit initial liquidity (in form of an assets). Create a new liquidity token. Mint & transfer to the caller account an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
+
 #### Parameters:
+ * `origin` – Origin for the call. Must be signed.
+  * `liquidity_token_id` – ID of the liquidity token to be created. Asset with this ID must *not* exist.
+  * `asset_a_id` – ID of the asset A traded on the created liquidity pool. Asset with this ID must exist.
+  * `asset_b_id` – ID of the asset B traded on the created liquidity pool. Asset with this ID must exist.
+  * `amount_a` – Initial amount of the asset A to deposit in the pool. Must be greater than 0.
+
 
 #### Errors:
+* `LiquidityPoolAlreadyExisting` - Trying to recreate an existing liquidity pool
+* `LiquidityPoolDoesNotExist` - Trying to add or remove liquidity from/to a non-existing liquidity pool
 
 #### Tests
+ * `create_new_liquidity_pool_success_test`
+  * `create_the_same_liquidity_pool_twice_fail_test`
+
 </details>
 
 <details>

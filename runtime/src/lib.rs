@@ -268,10 +268,18 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const LendingPalletId: PalletId = PalletId(*b"p_len_id");
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_template::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_template::weights::SubstrateWeight<Runtime>;
+	type NativeBalance = Balances;
+	type Fungibles = Assets;
+	type PalletId = LendingPalletId;
+	type ManagerOrigin = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
