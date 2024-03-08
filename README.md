@@ -1,14 +1,14 @@
-# PolyLend Finance - The cross-chain Lending pallet
-### PolyLend is a lending POC that implements AAVE functionalities in a substrate Dapp for cross-chain assets
+# Kylix Finance - The cross-chain Lending Dapp
+### Kylix is a substrate Lending Dapp that implements Compound V2 lending functionalities for cross-chain assets 
 
 [<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/polkalend-finance/)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
 [![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-PolkaLend Finance is a non-custodial substrate Dapp that allows users to participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an overcollateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
+Kylix Finance is a non-custodial substrate Dapp that allows users to participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
-:warning: It is **not a production-ready substrate node**, but a POC built for learning purposes. It is discouraged to use this code 'as-is' in a production runtime.
+:warning: It is **not a production-ready substrate node**, but it is still a proof of concept, built for testing purposes. It is discouraged to use this code 'as-is' in a production runtime.
 
 ## User Flow
 
@@ -16,29 +16,29 @@ PolkaLend Finance is a non-custodial substrate Dapp that allows users to partici
 
 ## How does it work
 
-Polkalend lets users to borrow assets for a fee and/or to lend them for an interest. An borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
+Polkalend lets users borrow assets for a fee and lend them for interest. A borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
 
-By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interests from being borrowed on Polkalend Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
+By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interest from being borrowed on Polkalend Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
 
 ### Liquidation Protection
 
-A collateralized loan gives a borrower more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for collateral’s value if it decreases. Once your collateral falls below the loan's value or some other given value, the funds are sold or transferred to the lender.
+A collateralized loan gives borrowers more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for the collateral’s value if it decreases. Once your collateral falls below the loan's or some other value, the funds are sold or transferred to the lender.
 
 ## Exposed Extrinsics
 
-RamenSwap exposes to the world 5 defined extrinsics:
+Kylix exposes to the world 5 defined extrinsic:
 
 <details>
 <summary><h3>do_supply</h3></summary>
 
-Create a new lending pool. Deposit initial liquidity (in form of an assets). Create a new liquidity token. Mint & transfer to the caller account an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
+Create a new lending pool. Deposit initial liquidity (in the form of an asset). Create a new liquidity token. Mint & transfer to the caller accounts an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
 
 #### Parameters:
  * `origin` – Origin for the call. Must be signed.
-  * `liquidity_token_id` – ID of the liquidity token to be created. Asset with this ID must *not* exist.
-  * `asset_a_id` – ID of the asset A traded on the created liquidity pool. Asset with this ID must exist.
-  * `asset_b_id` – ID of the asset B traded on the created liquidity pool. Asset with this ID must exist.
-  * `amount_a` – Initial amount of the asset A to deposit in the pool. Must be greater than 0.
+  * `liquidity_token_id` – ID of the liquidity token to be created. The asset with this ID must *not* exist.
+  * `asset_a_id` – ID of the asset A traded on the created liquidity pool. The asset with this ID must exist.
+  * `asset_b_id` – ID of the asset B traded on the created liquidity pool. The asset with this ID must exist.
+  * `amount_a` – Initial amount of asset A to deposit in the pool. Must be greater than 0.
 
 
 #### Errors:
@@ -145,72 +145,14 @@ db keystore network
 
 After you start the node template locally, you can interact with it using the hosted version of the [Polkadot/Substrate Portal](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) front-end by connecting to the local node endpoint.
 A hosted version is also available on [IPFS (redirect) here](https://dotapps.io/) or [IPNS (direct) here](ipns://dotapps.io/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer).
-You can also find the source code and instructions for hosting your own instance on the [polkadot-js/apps](https://github.com/polkadot-js/apps) repository.
-
-## Template Structure
-
-A Substrate project such as this consists of a number of components that are spread across a few directories.
-
-### Node
-
-A blockchain node is an application that allows users to participate in a blockchain network.
-Substrate-based blockchain nodes expose a number of capabilities:
-
-- Networking: Substrate nodes use the [`libp2p`](https://libp2p.io/) networking stack to allow the
-  nodes in the network to communicate with one another.
-- Consensus: Blockchains must have a way to come to [consensus](https://docs.substrate.io/fundamentals/consensus/) on the state of the network.
-  Substrate makes it possible to supply custom consensus engines and also ships with several consensus mechanisms that have been built on top of [Web3 Foundation research](https://research.web3.foundation/en/latest/polkadot/NPoS/index.html).
-- RPC Server: A remote procedure call (RPC) server is used to interact with Substrate nodes.
-
-There are several files in the `node` directory.
-Take special note of the following:
-
-- [`chain_spec.rs`](./node/src/chain_spec.rs): A [chain specification](https://docs.substrate.io/build/chain-spec/) is a source code file that defines a Substrate chain's initial (genesis) state.
-  Chain specifications are useful for development and testing, and critical when architecting the launch of a production chain.
-  Take note of the `development_config` and `testnet_genesis` functions,.
-  These functions are used to define the genesis state for the local development chain configuration.
-  These functions identify some [well-known accounts](https://docs.substrate.io/reference/command-line-tools/subkey/) and use them to configure the blockchain's initial state.
-- [`service.rs`](./node/src/service.rs): This file defines the node implementation.
-  Take note of the libraries that this file imports and the names of the functions it invokes.
-  In particular, there are references to consensus-related topics, such as the [block finalization and forks](https://docs.substrate.io/fundamentals/consensus/#finalization-and-forks) and other [consensus mechanisms](https://docs.substrate.io/fundamentals/consensus/#default-consensus-models) such as Aura for block authoring and GRANDPA for finality.
-
-
-
-### Runtime
-
-In Substrate, the terms "runtime" and "state transition function" are analogous.
-Both terms refer to the core logic of the blockchain that is responsible for validating blocks and executing the state changes they define.
-The Substrate project in this repository uses [FRAME](https://docs.substrate.io/learn/runtime-development/#frame) to construct a blockchain runtime.
-FRAME allows runtime developers to declare domain-specific logic in modules called "pallets".
-At the heart of FRAME is a helpful [macro language](https://docs.substrate.io/reference/frame-macros/) that makes it easy to create pallets and flexibly compose them to create blockchains that can address [a variety of needs](https://substrate.io/ecosystem/projects/).
-
-Review the [FRAME runtime implementation](./runtime/src/lib.rs) included in this template and note the following:
-
-- This file configures several pallets to include in the runtime.
-  Each pallet configuration is defined by a code block that begins with `impl $PALLET_NAME::Config for Runtime`.
-- The pallets are composed into a single runtime by way of the [`construct_runtime!`](https://paritytech.github.io/substrate/master/frame_support/macro.construct_runtime.html) macro, which is part of the [core FRAME pallet library](https://docs.substrate.io/reference/frame-pallets/#system-pallets).
-
-### Pallets
-
-The runtime in this project is constructed using many FRAME pallets that ship with [the Substrate repository](https://github.com/paritytech/substrate/tree/master/frame) and a template pallet that is [defined in the `pallets`](./pallets/template/src/lib.rs) directory.
-
-A FRAME pallet is comprised of a number of blockchain primitives, including:
-
-- Storage: FRAME defines a rich set of powerful [storage abstractions](https://docs.substrate.io/build/runtime-storage/) that makes it easy to use Substrate's efficient key-value database to manage the evolving state of a blockchain.
-- Dispatchables: FRAME pallets define special types of functions that can be invoked (dispatched) from outside of the runtime in order to update its state.
-- Events: Substrate uses [events](https://docs.substrate.io/build/events-and-errors/) to notify users of significant state changes.
-- Errors: When a dispatchable fails, it returns an error.
-
-Each pallet has its own `Config` trait which serves as a configuration interface to generically define the types and parameters it depends on.
+You can also find the source code and instructions for hosting your instance on the [polkadot-js/apps](https://github.com/polkadot-js/apps) repository.
 
 ### Future Improvements
 
 0. TODO
 
-### Experimental and cool stuff
-
 ## Contribution
 
-PolkaLend is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
+Kylix Finance is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
 
 I appreciate very much your feedback!
