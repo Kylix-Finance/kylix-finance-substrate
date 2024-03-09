@@ -63,19 +63,23 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{pallet_prelude::DispatchResult, PalletId};
+	use frame_support::traits::tokens::Preservation;
+use frame_support::{pallet_prelude::DispatchResult, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_support::sp_runtime::traits::AccountIdConversion;
 	use frame_support::sp_runtime::traits::Zero;
+	use frame_support::sp_runtime::traits::One;
 	use frame_support::traits::fungibles::Inspect;
-	
+	use frame_support::traits::fungibles::Mutate;
+	use frame_support::traits::fungibles::Create;
+
 	use frame_support::{
 		traits::{
 			fungible::{self},
 			fungibles::{self},
 		}, DefaultNoBound
 	};
-
+	
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -127,15 +131,17 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct LendingPool<T: Config> {
 		pub id: AssetIdOf<T>, // the lending pool id
-		pub balance_free: AssetBalanceOf<T>, /* the not-yet-borrowed balance of the lending pool
+		pub balance: AssetBalanceOf<T>, // the not-yet-borrowed balance of the lending pool
+		pub activated: bool,
+		 /* 
 		                       * minted tokens
 		                       * rate model
 		                       * kink
 		                       *pub balance_locked: AssetBalanceOf<T>, */
 	}
 	impl<T: Config> LendingPool<T> {
-		pub fn from(id: AssetIdOf<T>, balance_free: AssetBalanceOf<T>) -> Self {
-			LendingPool { id, balance_free }
+		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
+			LendingPool { id, balance, activated: false }
 		}
 	}
 
@@ -221,9 +227,9 @@ pub mod pallet {
 		///   successfully added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
-		pub fn create_lending_pool(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn create_lending_pool(origin: OriginFor<T>, id: AssetIdOf<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_create_lending_pool(&who, asset, balance)?;
+			Self::do_create_lending_pool(&who, id, asset, balance)?;
 			Self::deposit_event(Event::LendingPoolAdded { who : who.clone() });
 			Self::deposit_event(Event::DepositSupplied { balance, who });
 			Ok(())
@@ -284,15 +290,20 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
+		// This method creates a NEW lending pool and mints LP tokens back to the user. 
+		// At this very moment, the user is the first liquidity provider, therefore the number of LP tokens
+		// minted is equal to assets deposited. 
+		//
 		pub fn do_create_lending_pool(
 			who: &T::AccountId,
+			id: AssetIdOf<T>,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
 			
 			// First, let's check the balance amount is valid
 			ensure!(
-				balance.is_zero(),
+				balance > BalanceOf::<T>::zero(),
 				Error::<T>::InvalidLiquiditySupply
 			);
 
@@ -310,8 +321,22 @@ pub mod pallet {
 				Error::<T>::LendingPoolAlreadyExists
 			);
 
+			// Now we can safely create and store our lending pool with initial balance
+			let asset_pool = AssetPool::from(asset);
+			let lending_pool = LendingPool::<T>::from(asset, balance);
+			LendingPoolStorage::<T>::insert(asset_pool, lending_pool);
+		
+			// let's transfers the tokens (asset) from the users account into pallet account 
+			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
+		
+			// checks if the liquidity token already exists and if not create it
+			if !T::Fungibles::asset_exists(id.clone()) {
+				T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
+			}
 	
-
+			// mints the lp tokens into the users account
+			T::Fungibles::mint_into(id, &who, balance)?;
+			
 			Ok(())
 		}
 
