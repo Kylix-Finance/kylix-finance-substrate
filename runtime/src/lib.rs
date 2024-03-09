@@ -18,6 +18,9 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
+use frame_support::traits::AsEnsureOriginWithArg;
+use frame_system::EnsureSigned;
+use frame_system::EnsureRoot;
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -268,8 +271,10 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+use frame_support::PalletId;
+
 parameter_types! {
-	pub const LendingPalletId: PalletId = PalletId(*b"p_len_id");
+	pub const LendingPalletId: PalletId = PalletId(*b"kylix_id");
 }
 
 /// Configure the pallet-template in pallets/template.
@@ -279,8 +284,39 @@ impl pallet_template::Config for Runtime {
 	type NativeBalance = Balances;
 	type Fungibles = Assets;
 	type PalletId = LendingPalletId;
-	type ManagerOrigin = ();
 }
+
+parameter_types! {
+	pub const AssetDeposit: Balance = 100;
+	pub const ApprovalDeposit: Balance = 1;
+	pub const StringLimit: u32 = 50;
+	pub const MetadataDepositBase: Balance = 10;
+	pub const MetadataDepositPerByte: Balance = 1;
+}
+
+impl pallet_assets::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = u128;
+	type AssetId = u32;
+	type AssetIdParameter = codec::Compact<u32>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = ConstU128<1>;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type CallbackHandle = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -292,6 +328,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
+		Assets: pallet_assets,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
 	}

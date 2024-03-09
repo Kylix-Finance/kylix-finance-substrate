@@ -13,6 +13,13 @@ frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: frame_system,
+		Balances: pallet_balances,
+		Timestamp: pallet_timestamp,
+		Aura: pallet_aura,
+		Grandpa: pallet_grandpa,
+		Balances: pallet_balances,
+		TransactionPayment: pallet_transaction_payment,
+		Sudo: pallet_sudo,
 		TemplateModule: pallet_template,
 	}
 );
@@ -46,6 +53,18 @@ impl frame_system::Config for Test {
 impl pallet_template::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type PalletId = TemplateModule;
+	
+	#[doc = r" Type to access the Balances Pallet."]
+	type NativeBalance = Balances;
+	
+	#[doc = r" Type to access the Assets Pallet."]
+	type Fungibles = Assets;
+	
+	#[doc = r" The origin which can add or remove LendingPools and update LendingPools (interest rate model, kink, activate, deactivate)."]
+	type ManagerOrigin;
+
+	
 }
 
 // Build genesis storage according to the mock runtime.

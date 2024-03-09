@@ -8,7 +8,7 @@
 
 Kylix Finance is a non-custodial substrate Dapp that allows users to participate as depositors or borrowers, allowing them to lend and borrow assets on Polkadot. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
-:warning: It is **not a production-ready substrate node**, but it is still a proof of concept, built for testing purposes. It is discouraged to use this code 'as-is' in a production runtime.
+:warning: It is **not a production-ready substrate node**, but it is still a proof of concept. It is discouraged to use this code 'as-is' in a production runtime.
 
 ## User Flow
 
