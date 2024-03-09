@@ -15,17 +15,16 @@
 ///!
 ///! Implemented Extrinsics:
 ///!
-///! 1. supply
-///! 2. withdraw
-///! 3. borrow
-///! 4. repay
-///! 5. claim_rewards
-///! 6. add_lending_pool
-///! 7. remove_lending_pool
-///! 8. activate_lending_pool
-///! 9. deactivate_lending_pool
-///! 10. update_pool_rate_model
-///! 11. update_pool_kink
+///! 1. create_lending_pool
+///! 2. activate_lending_pool
+///! 3. supply
+///! 4. withdraw
+///! 5. borrow
+///! 6. repay
+///! 7. claim_rewards
+///! 8. deactivate_lending_pool
+///! 9. update_pool_rate_model
+///! 10. update_pool_kink
 ///!
 ///! Use case
 
@@ -64,7 +63,7 @@ pub use weights::*;
 pub mod pallet {
 	use super::*;
 	use frame_support::traits::tokens::Preservation;
-use frame_support::{pallet_prelude::DispatchResult, PalletId};
+	use frame_support::{pallet_prelude::DispatchResult, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_support::sp_runtime::traits::AccountIdConversion;
 	use frame_support::sp_runtime::traits::Zero;
@@ -143,6 +142,14 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
 			LendingPool { id, balance, activated: false }
 		}
+
+		pub fn is_empty(&self) -> bool {
+			self.balance.cmp(&BalanceOf::<T>::zero()).is_eq()
+		}
+
+		pub fn is_active(&self) -> bool {
+			self.activated == true
+		}
 	}
 
 	/// Kylix runtime storage items
@@ -160,12 +167,12 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		DepositSupplied { who: T::AccountId, balance: BalanceOf<T> },
+		DepositSupplied { who: T::AccountId, asset: AssetIdOf<T>, balance: BalanceOf<T> },
 		DepositWithdrawn { who: T::AccountId, balance: BalanceOf<T> },
 		DepositBorrowed { who: T::AccountId, balance: BalanceOf<T> },
 		DepositRepaid { who: T::AccountId, balance: BalanceOf<T> },
 		RewardsClaimed { who: T::AccountId, balance: BalanceOf<T> },
-		LendingPoolAdded { who: T::AccountId },
+		LendingPoolAdded { who: T::AccountId, asset: AssetIdOf<T> },
 		LendingPoolRemoved { who: T::AccountId },
 		LendingPoolActivated { who: T::AccountId, asset : AssetIdOf<T> },
 		LendingPoolDeactivated { who: T::AccountId, asset : AssetIdOf<T> },
@@ -188,6 +195,8 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		InvalidLiquiditySupply,
 		/// The user has not enough liquidity
 		NotEnoughLiquiditySupply,
+		/// Lending Pool is empty
+		LendingPoolIsEmpty,
 	}
 
 	#[pallet::call]
@@ -202,8 +211,9 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		///
 		/// * `origin` - The origin caller of this function. This should be signed by the user
 		///   that creates the lending pool and add some liquidity.
+		/// * `id`: AssetIdOf<T> - The pool id, provided by the user
 		/// * `asset` - The identifier for the type of asset that the user wants to provide.
-		/// * `amount` - The amount of `asset_a` that the user is providing.
+		/// * `balance` - The amount of `asset` that the user is providing.
 		///
 		/// # Errors
 		///
@@ -211,10 +221,7 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		///
 		/// * If the origin is not signed (i.e., the function was not called by a user).
 		/// * If the provided assets do not exist.
-		/// * If `asset_a` and `asset_b` are the same.
-		/// * If `amount_a` or `amount_b` is 0 or less.
-		/// * If creating a new liquidity pool would exceed the maximum number of allowed assets
-		///   (`AssetLimitReached`).
+		/// * If `amount` is 0 or less.
 		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
 		///   underflows
 		///
@@ -222,21 +229,21 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		///
 		/// If the function succeeds, it triggers two events:
 		///
-		/// * `LiquidityPoolCreated(asset_a, asset_b)` if a new liquidity pool was created.
-		/// * `LiquidityAdded(asset_a, asset_b, amount_a, amount_b)` after the liquidity has been
+		/// * `LendingPoolAdded(asset_a)` if a new liquidity pool was created.
+		/// * `DepositSupplied(asset_a, asset_b, amount_a, amount_b)` after the liquidity has been
 		///   successfully added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
 		pub fn create_lending_pool(origin: OriginFor<T>, id: AssetIdOf<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_create_lending_pool(&who, id, asset, balance)?;
-			Self::deposit_event(Event::LendingPoolAdded { who : who.clone() });
-			Self::deposit_event(Event::DepositSupplied { balance, who });
+			Self::deposit_event(Event::LendingPoolAdded { who : who.clone(), asset });
+			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
 			Ok(())
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(Weight::default())]
 		pub fn activate_lending_pool(
 			origin: OriginFor<T>,
 			asset : AssetIdOf<T>
@@ -248,15 +255,16 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::do_something())]
-		pub fn supply(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		#[pallet::weight(Weight::default())]
+		pub fn supply(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::deposit_event(Event::DepositSupplied { balance, who });
+			Self::do_supply(&who, asset)?;
+			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
 			Ok(())
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(Weight::default())]
 		pub fn withdraw(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::DepositWithdrawn { who, balance });
@@ -264,7 +272,7 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(Weight::default())]
 		pub fn borrow(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::DepositBorrowed { who, balance });
@@ -272,7 +280,7 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(Weight::default())]
 		pub fn repay(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::DepositRepaid { who, balance });
@@ -280,8 +288,33 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(Weight::default())]
 		pub fn claim_rewards(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Ok(())
+		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(Weight::default())]
+		pub fn deactivate_lending_pool(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Ok(())
+		}
+
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(Weight::default())]
+		pub fn update_pool_rate_model(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Ok(())
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(Weight::default())]
+		pub fn update_pool_kink(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::RewardsClaimed { who, balance });
 			Ok(())
@@ -340,8 +373,33 @@ use frame_support::{pallet_prelude::DispatchResult, PalletId};
 			Ok(())
 		}
 
-		pub fn do_activate_lending_pool(asset:  AssetIdOf<T>) -> DispatchResult {
+		pub fn do_activate_lending_pool(
+			asset: AssetIdOf<T>
+		) -> DispatchResult {
+			
+			// let's check if our pool does exist before activating it
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+			
+			// let's check if our pool is actually already active and balance > 0
+			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
+			ensure!(pool.is_active() == false, Error::<T>::LendingPoolAlreadyActivated);
+			ensure!(!pool.is_empty(), Error::<T>::LendingPoolIsEmpty);
+			
+			// ok now we can activate it
+			LendingPoolStorage::<T>::mutate(asset_pool, |v| {
+				v.activated = true
+			});
+			Ok(())
+		}
 
+		pub fn do_supply(who: &T::AccountId,
+			asset:  AssetIdOf<T>
+		) -> DispatchResult {
+		
 			Ok(())
 		}
 
