@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 ///! # The Lending pallet
 ///!
 ///! ## Overview
@@ -27,7 +29,6 @@
 ///!
 ///! Use case
 
-#![cfg_attr(not(feature = "std"), no_std)]
 use frame_support::{
 	pallet_prelude::*,
 	traits::{fungible, fungibles},
@@ -41,8 +42,7 @@ pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
 pub type AssetIdOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::AssetId;
 
 /// Fungible Balance
-pub type AssetBalanceOf<T> =
-	<<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::Balance;
+pub type AssetBalanceOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::Balance;
 
 /// Native Balance
 pub type BalanceOf<T> = <<T as Config>::NativeBalance as fungible::Inspect<AccountOf<T>>>::Balance;
@@ -66,6 +66,9 @@ pub mod pallet {
 	use frame_support::{pallet_prelude::DispatchResult, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_support::sp_runtime::traits::AccountIdConversion;
+	use frame_support::sp_runtime::traits::Zero;
+	use frame_support::traits::fungibles::Inspect;
+	
 	use frame_support::{
 		traits::{
 			fungible::{self},
@@ -111,7 +114,11 @@ pub mod pallet {
 	pub struct AssetPool<T: Config> {
 		asset: AssetIdOf<T>,
 	}
-
+	impl<T: Config> AssetPool<T> {
+		pub fn from(asset: AssetIdOf<T>) -> Self {
+			AssetPool { asset }
+		}
+	}
 	/// Definition of the Lending Pool Reserve Entity
 	/// A struct to hold the LendingPool and all its properties, 
 	/// used as Value in the lending pool storage
@@ -132,7 +139,7 @@ pub mod pallet {
 		}
 	}
 
-	/// PolyLend runtime storage items
+	/// Kylix runtime storage items
 	///
 	/// Lending pools defined for the assets
 	///
@@ -140,9 +147,10 @@ pub mod pallet {
 	///
 	#[pallet::storage]
 	#[pallet::getter(fn reserve_pools)]
-	pub type ReservePools<T> =
+	pub type LendingPoolStorage<T> =
 		StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>, ValueQuery>;
 
+	/// Events to inform users when important changes are made.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -170,26 +178,26 @@ pub mod pallet {
 		LendingPoolAlreadyActivated,
 		/// Lending Pool already deactivated
 		LendingPoolAlreadyDeactivated,
+		/// The balance amount supplied is not valid
+		InvalidLiquiditySupply,
+		/// The user has not enough liquidity
+		NotEnoughLiquiditySupply,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create a new Lending pool and then supply some liquidity
-		///
-		/// The `create_lending_pool` function allows a user to add liquidity to a liquidity pool.
-		/// Given two assets and their amounts, it either creates a new liquidity pool if
-		/// it does not already exist for these two assets or adds the provided liquidity
-		/// to an existing pool. The user will receive LP tokens in return.
+		
+		/// The `create_lending_pool` function allows a user to Create a new Lending pool
+		/// and then supply some liquidity. Given an asset and its amount, it creates a 
+		/// new lending pool if it does not already exist and adds the provided liquidity
+		/// to the existing pool. The user will receive LP tokens in return.
 		///
 		/// # Arguments
 		///
 		/// * `origin` - The origin caller of this function. This should be signed by the user
 		///   that creates the lending pool and add some liquidity.
 		/// * `asset` - The identifier for the type of asset that the user wants to provide.
-		/// * `asset_b` - The identifier for the second type of asset that the user wants to
-		///   provide.
-		/// * `amount_a` - The amount of `asset_a` that the user is providing.
-		/// * `amount_b` - The amount of `asset_b` that the user is providing.
+		/// * `amount` - The amount of `asset_a` that the user is providing.
 		///
 		/// # Errors
 		///
@@ -213,9 +221,9 @@ pub mod pallet {
 		///   successfully added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
-		pub fn create_lending_pool(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn create_lending_pool(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_create_lending_pool(balance)?;
+			Self::do_create_lending_pool(&who, asset, balance)?;
 			Self::deposit_event(Event::LendingPoolAdded { who : who.clone() });
 			Self::deposit_event(Event::DepositSupplied { balance, who });
 			Ok(())
@@ -228,8 +236,8 @@ pub mod pallet {
 			asset : AssetIdOf<T>
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::do_activate_lending_pool(asset)?;
 			Self::deposit_event(Event::LendingPoolActivated { who, asset });
-
 			Ok(())
 		}
 
@@ -275,14 +283,47 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn do_create_lending_pool(balance: BalanceOf<T>) -> DispatchResult {
+
+		pub fn do_create_lending_pool(
+			who: &T::AccountId,
+			asset:  AssetIdOf<T>,
+			balance: BalanceOf<T>
+		) -> DispatchResult {
+			
+			// First, let's check the balance amount is valid
+			ensure!(
+				balance.is_zero(),
+				Error::<T>::InvalidLiquiditySupply
+			);
+
+			// Second, let's check the if user has enough liquidity
+			let user_balance = T::Fungibles::balance(asset.clone(), who);
+			ensure!(
+				user_balance >= balance,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
+		
+			// Now let's check if the pool is already existing, before creating a new one.
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				!LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolAlreadyExists
+			);
+
+	
+
 			Ok(())
 		}
 
-		/// The account ID of the Lending pot.
+		pub fn do_activate_lending_pool(asset:  AssetIdOf<T>) -> DispatchResult {
+
+			Ok(())
+		}
+
+		/// This method returns the palled account id
 		///
-		/// This actually does computation. If you need to keep using it, then make sure you cache
-		/// the value and only call this once.
+		/// This actually does computation. If you need to keep using it, 
+		/// then make sure to cache the value and only call this once.
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
