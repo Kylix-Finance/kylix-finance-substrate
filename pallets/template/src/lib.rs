@@ -15,16 +15,16 @@
 ///!
 ///! Implemented Extrinsics:
 ///!
-///! 1. create_lending_pool
-///! 2. activate_lending_pool
-///! 3. supply
-///! 4. withdraw
-///! 5. borrow
-///! 6. repay
-///! 7. claim_rewards
-///! 8. deactivate_lending_pool
-///! 9. update_pool_rate_model
-///! 10. update_pool_kink
+///! 0. create_lending_pool()
+///! 1. activate_lending_pool()
+///! 2. supply()
+///! 3. withdraw()
+///! 4. borrow()
+///! 5. repay()
+///! 6. claim_rewards()
+///! 7. deactivate_lending_pool()
+///! 8. update_pool_rate_model()
+///! 9. update_pool_kink()
 ///!
 ///! Use case
 
@@ -69,19 +69,14 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use frame_support::traits::tokens::Preservation;
 	use frame_support::PalletId;
-	use frame_support::sp_runtime::traits::{AccountIdConversion, Zero, One};
+	use frame_support::sp_runtime::traits::{AccountIdConversion,Zero,One};
 	use frame_support::traits::fungibles::{Inspect,Mutate,Create};
-	use frame_support::{
-		traits::{
-			fungible::{self},
-			fungibles::{self},
-		}, DefaultNoBound
-	};
+	use frame_support::{traits::{fungible::{self},fungibles::{self},}, DefaultNoBound };
+	use frame_support::sp_runtime::traits::{CheckedAdd, CheckedSub};
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	/// The pallet's config trait.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 	
@@ -131,7 +126,8 @@ pub mod pallet {
 	pub struct LendingPool<T: Config> {
 		
 		pub id: AssetIdOf<T>, // the lending pool id
-		pub balance: AssetBalanceOf<T>, // the not-yet-borrowed balance of the lending pool
+		
+		pub reserve_balance: AssetBalanceOf<T>, // the available reserve of the lending pool
 		pub borrowed_balance: AssetBalanceOf<T>,
 		
 		pub activated: bool,
@@ -140,10 +136,9 @@ pub mod pallet {
 		pub borrow_rate: Rate,
 		pub supply_rate: Rate,
 		pub utilisation_ratio: Rate,
-
 		pub liquidation_threshold: Permill,
 
-		 /* minted token, kink */
+		/* minted token, kink */
 	}
 	impl<T: Config> LendingPool<T> {
 
@@ -151,7 +146,7 @@ pub mod pallet {
 		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
 			LendingPool { 
 				id, 
-				balance,
+				reserve_balance : balance,
 				borrowed_balance: AssetBalanceOf::<T>::zero(),
 				activated: false,
 				borrow_index : Rate::one(),
@@ -164,7 +159,7 @@ pub mod pallet {
 		}
 
 		pub fn is_empty(&self) -> bool {
-			self.balance.cmp(&BalanceOf::<T>::zero()).is_eq()
+			self.reserve_balance.cmp(&BalanceOf::<T>::zero()).is_eq()
 		}
 
 		pub fn is_active(&self) -> bool {
@@ -211,21 +206,30 @@ pub mod pallet {
 		LendingPoolAlreadyActivated,
 		/// Lending Pool already deactivated
 		LendingPoolAlreadyDeactivated,
-		/// The balance amount supplied is not valid
+		/// Lending Pool is not active or has been deprecated
+		LendingPoolNotActive,
+		/// The balance amount to supply is not valid
 		InvalidLiquiditySupply,
+		/// The balance amount to withdraw is not valid
+		InvalidLiquidityWithdrawal,
 		/// The user has not enough liquidity
 		NotEnoughLiquiditySupply,
+		/// The user wants to withdraw more than allowed!
+		NotEnoughElegibleLiquidityToWithdraw,
 		/// Lending Pool is empty
 		LendingPoolIsEmpty,
+		// The classic Overflow Error
+		OverflowError,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		
-		/// The `create_lending_pool` function allows a user to Create a new Lending pool
-		/// and then supply some liquidity. Given an asset and its amount, it creates a 
-		/// new lending pool if it does not already exist and adds the provided liquidity
-		/// to the existing pool. The user will receive LP tokens in return.
+		/// The `create_lending_pool` function allows a user to Create a new reserve and then
+		/// supply it with some liquidity. Given an asset and its amount, it creates a 
+		/// new lending pool, if it does not already exist, and adds the provided liquidity
+		/// 
+		/// The user will receive LP tokens in return in ratio.
 		///
 		/// # Arguments
 		///
@@ -278,15 +282,16 @@ pub mod pallet {
 		#[pallet::weight(Weight::default())]
 		pub fn supply(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_supply(&who, asset)?;
+			Self::do_supply(&who, asset, balance)?;
 			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
 			Ok(())
 		}
 
 		#[pallet::call_index(3)]
 		#[pallet::weight(Weight::default())]
-		pub fn withdraw(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn withdraw(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::do_withdrawal(&who, asset, balance)?;
 			Self::deposit_event(Event::DepositWithdrawn { who, balance });
 			Ok(())
 		}
@@ -317,26 +322,25 @@ pub mod pallet {
 
 		#[pallet::call_index(7)]
 		#[pallet::weight(Weight::default())]
-		pub fn deactivate_lending_pool(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn deactivate_lending_pool(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Self::deposit_event(Event::LendingPoolDeactivated { who, asset });
 			Ok(())
 		}
 
-
 		#[pallet::call_index(8)]
 		#[pallet::weight(Weight::default())]
-		pub fn update_pool_rate_model(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn update_pool_rate_model(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Self::deposit_event(Event::LendingPoolRateModelUpdated { who, asset });
 			Ok(())
 		}
 
 		#[pallet::call_index(9)]
 		#[pallet::weight(Weight::default())]
-		pub fn update_pool_kink(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn update_pool_kink(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::deposit_event(Event::RewardsClaimed { who, balance });
+			Self::deposit_event(Event::LendingPoolKinkUpdated { who, asset });
 			Ok(())
 		}
 	}
@@ -344,9 +348,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		// This method creates a NEW lending pool and mints LP tokens back to the user. 
-		// At this very moment, the user is the first liquidity provider, therefore the number of LP tokens
-		// minted is equal to assets deposited. 
-		//
+		// At this very moment, the user is the first liquidity provider, 
 		pub fn do_create_lending_pool(
 			who: &T::AccountId,
 			id: AssetIdOf<T>,
@@ -393,6 +395,9 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// This method activates an existing lending pool that is not empty. 
+		// Once a liquidity pool gets activated supplies operations can be performed
+		// otherwise only withdrawals. 
 		pub fn do_activate_lending_pool(
 			asset: AssetIdOf<T>
 		) -> DispatchResult {
@@ -406,8 +411,14 @@ pub mod pallet {
 			
 			// let's check if our pool is actually already active and balance > 0
 			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
-			ensure!(pool.is_active() == false, Error::<T>::LendingPoolAlreadyActivated);
-			ensure!(!pool.is_empty(), Error::<T>::LendingPoolIsEmpty);
+			ensure!(
+				pool.is_active() == false, 
+				Error::<T>::LendingPoolAlreadyActivated
+			);
+			ensure!(
+				!pool.is_empty(), 
+				Error::<T>::LendingPoolIsEmpty
+			);
 			
 			// ok now we can activate it
 			LendingPoolStorage::<T>::mutate(asset_pool, |v| {
@@ -417,11 +428,103 @@ pub mod pallet {
 		}
 
 		pub fn do_supply(who: &T::AccountId,
-			asset:  AssetIdOf<T>
+			asset:  AssetIdOf<T>,
+			balance: BalanceOf<T>
 		) -> DispatchResult {
+
+			// First, let's check the balance amount to supply is valid
+			ensure!(
+				balance > BalanceOf::<T>::zero(),
+				Error::<T>::InvalidLiquiditySupply
+			);
+
+			// Second, let's check the if user has enough liquidity
+			let user_balance = T::Fungibles::balance(asset.clone(), who);
+			ensure!(
+				user_balance >= balance,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
 		
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+			
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool);
+			
+			// let's ensure that the lending pool is active
+			ensure!(
+				pool.is_active() == true, 
+				Error::<T>::LendingPoolNotActive
+			);
+			
+			// let's transfers the tokens (asset) from the users account into pallet account 
+			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
+		
+			// mints the lp tokens into the users account
+			T::Fungibles::mint_into(pool.id, &who, balance)?;
+
+			pool.reserve_balance = pool.reserve_balance
+				.checked_add(&balance)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			// let's update the balances of the pool now
+			LendingPoolStorage::<T>::set(&asset_pool, pool);
+			
 			Ok(())
 		}
+
+		fn do_withdrawal(who: &T::AccountId,
+			asset:  AssetIdOf<T>,
+			balance: BalanceOf<T>
+		) -> DispatchResult {
+
+			// First, let's check the balance amount to supply is valid
+			ensure!(
+				balance > BalanceOf::<T>::zero(),
+				Error::<T>::InvalidLiquidityWithdrawal
+			);
+
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+
+			let mut pool = LendingPoolStorage::<T>::get(asset_pool.clone());
+
+			// let's check the if the pool has enough liquidity
+			ensure!(
+				pool.reserve_balance >= balance,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
+
+			// let's check if the user is actually elegible to withdraw!
+			let lp_tokens = T::Fungibles::balance(pool.id.clone(), &who);
+			ensure!(
+				lp_tokens >= balance, 
+				Error::<T>::NotEnoughElegibleLiquidityToWithdraw
+			);
+		
+			// Get the current reserves
+			let reserve_user = T::Fungibles::balance(asset.clone(), &Self::account_id());
+		
+			// Calculate the liquidity amount to withdraw
+			let total_issuance = T::Fungibles::total_issuance(pool.id.clone());
+		
+			pool.reserve_balance = pool.reserve_balance
+				.checked_sub(&balance)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			// let's update the balances of the pool now
+			LendingPoolStorage::<T>::set(&asset_pool, pool);
+			
+			Ok(())
+		}
+
 
 		/// This method returns the palled account id
 		///
