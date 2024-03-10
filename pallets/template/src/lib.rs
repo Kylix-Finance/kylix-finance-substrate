@@ -31,6 +31,7 @@
 use frame_support::{
 	pallet_prelude::*,
 	traits::{fungible, fungibles},
+	sp_runtime::{FixedU128, Permill}
 };
 pub use pallet::*;
 
@@ -48,6 +49,9 @@ pub type BalanceOf<T> = <<T as Config>::NativeBalance as fungible::Inspect<Accou
 
 //pub type BalanceOf<T> = <T as currency::Config>::Balance;
 
+pub type Rate = FixedU128;
+pub type Ratio = Permill;
+
 #[cfg(test)]
 mod mock;
 
@@ -62,29 +66,25 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::traits::tokens::Preservation;
-	use frame_support::{pallet_prelude::DispatchResult, PalletId};
 	use frame_system::pallet_prelude::*;
-	use frame_support::sp_runtime::traits::AccountIdConversion;
-	use frame_support::sp_runtime::traits::Zero;
-	use frame_support::sp_runtime::traits::One;
-	use frame_support::traits::fungibles::Inspect;
-	use frame_support::traits::fungibles::Mutate;
-	use frame_support::traits::fungibles::Create;
-
+	use frame_support::traits::tokens::Preservation;
+	use frame_support::PalletId;
+	use frame_support::sp_runtime::traits::{AccountIdConversion, Zero, One};
+	use frame_support::traits::fungibles::{Inspect,Mutate,Create};
 	use frame_support::{
 		traits::{
 			fungible::{self},
 			fungibles::{self},
 		}, DefaultNoBound
 	};
-	
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	/// The pallet's config trait.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+	
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -129,18 +129,38 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
 	#[scale_info(skip_type_params(T))]
 	pub struct LendingPool<T: Config> {
+		
 		pub id: AssetIdOf<T>, // the lending pool id
 		pub balance: AssetBalanceOf<T>, // the not-yet-borrowed balance of the lending pool
+		pub borrowed_balance: AssetBalanceOf<T>,
+		
 		pub activated: bool,
-		 /* 
-		                       * minted tokens
-		                       * rate model
-		                       * kink
-		                       *pub balance_locked: AssetBalanceOf<T>, */
+		pub borrow_index: Rate,
+		pub exchange_rate: Rate,
+		pub borrow_rate: Rate,
+		pub supply_rate: Rate,
+		pub utilisation_ratio: Rate,
+
+		pub liquidation_threshold: Permill,
+
+		 /* minted token, kink */
 	}
 	impl<T: Config> LendingPool<T> {
+
+		// let's create a default reserve lending pool 
 		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
-			LendingPool { id, balance, activated: false }
+			LendingPool { 
+				id, 
+				balance,
+				borrowed_balance: AssetBalanceOf::<T>::zero(),
+				activated: false,
+				borrow_index : Rate::one(),
+			 	exchange_rate: Rate::one(), 
+				borrow_rate: Rate::zero(),
+				supply_rate: Rate::zero(),
+				utilisation_ratio: Rate::zero(),
+				liquidation_threshold: Permill::one(), // should be 80%
+			}
 		}
 
 		pub fn is_empty(&self) -> bool {
