@@ -1,7 +1,7 @@
 # Kylix Finance - The cross-chain Lending Dapp
-### Kylix is a substrate Lending Dapp that implements Compound V2 lending functionalities for cross-chain assets 
+### Kylix is a substrate Lending Dapp that implements Compound V2 style functionalities for lending and borrowing cross-chain assets 
 
-[<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/polkalend-finance/)
+[<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/kylix-finance/)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
 [![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
@@ -12,13 +12,13 @@ Kylix Finance is a non-custodial substrate Dapp that allows users to participate
 
 ## User Flow
 
-![polkalend flow](./polkalend.png)
+![Kylix flow](./polkalend.png)
 
 ## How does it work
 
-Polkalend lets users borrow assets for a fee and lend them for interest. A borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
+Kylix lets users borrow assets for a fee and lend them for interest. A borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a certain value, the borrower will need to top it up to the required level to avoid liquidation. When the borrower returns the loan plus a fee, the collateral is unlocked.
 
-By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interest from being borrowed on Polkalend Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
+By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interest from being borrowed on Kylix Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
 
 ### Liquidation Protection
 
@@ -26,7 +26,7 @@ A collateralized loan gives borrowers more time to use their funds in return for
 
 ## Exposed Extrinsics
 
-Kylix exposes to the world 5 defined extrinsic:
+Kylix Finance currently exposes to the world 9 defined extrinsic:
 
 <details>
 <summary><h3>do_supply</h3></summary>
