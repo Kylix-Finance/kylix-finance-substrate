@@ -409,6 +409,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `repay` function allows a user to repay liquidity from a lending pool.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		/// that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// * `balance` - The amount of `asset` that the user is providing.
+		/// 
+		/// # Errors
+		/// 	
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is not active.
+		/// * If the user has not enough liquidity to supply.
+		/// * If the balance amount to supply is not valid.
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
+		/// underflows
+		/// 
+		/// # Events
+		/// 
+		/// If the function succeeds, it triggers an event:
+		/// 
+		/// * `DepositRepaid(who, balance)` if the lending pool was activated.
+		/// 
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::default())]
 		pub fn repay(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
@@ -540,7 +568,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// This method supplies
+		// This method supplies liquidity to a lending pool and mints LP tokens back to the user.
+		// The pool must be active and the user must have enough liquidity to supply.
 		pub fn do_supply(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
@@ -590,6 +619,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// This method allows a user to withdraw liquidity from a lending pool.
+		/// The pool can be deactivated or not, but the user must have enough LP tokens to withdraw.
 		fn do_withdrawal(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
@@ -639,6 +670,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// 
 		fn do_borrow(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
@@ -677,6 +709,32 @@ pub mod pallet {
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
+			Ok(())
+		}
+
+		/// This method de-activates an existing lending pool
+		pub fn do_deactivate_lending_pool(
+			asset: AssetIdOf<T>
+		) -> DispatchResult {
+			
+			// let's check if our pool does exist before de-activating it
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+			
+			// let's check if our pool is actually already non-active
+			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
+			ensure!(
+				pool.is_active() == true, 
+				Error::<T>::LendingPoolAlreadyDeactivated
+			);
+			
+			// ok now we can de-activate it
+			LendingPoolStorage::<T>::mutate(asset_pool, |v| {
+				v.activated = false
+			});
 			Ok(())
 		}
 
