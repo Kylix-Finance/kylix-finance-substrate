@@ -266,6 +266,32 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `activate_lending_pool` function allows a user to activate a lending pool that is not empty.
+		/// Once a liquidity pool gets activated supplies operations can be performed
+		/// otherwise only withdrawals.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		///  that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// 
+		/// # Errors
+		/// 
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is already activated.
+		/// * If the pool is empty.
+		/// 
+		/// # Events
+		/// 
+		/// If the function succeeds, it triggers an event:
+		/// 
+		/// * `LendingPoolActivated(asset_a)` if the lending pool was activated.
+		/// 
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::default())]
 		pub fn activate_lending_pool(
@@ -278,6 +304,28 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `supply` function allows a user to supply liquidity to a lending pool.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		/// that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// * `balance` - The amount of `asset` that the user is providing.
+		/// 
+		/// # Errors
+		/// 
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is not active.
+		/// * If the user has not enough liquidity to supply.
+		/// * If the balance amount to supply is not valid.
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
+		///  underflows
+		/// 
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::default())]
 		pub fn supply(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
@@ -287,6 +335,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `withdraw` function allows a user to withdraw liquidity from a lending pool.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		/// that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// * `balance` - The amount of `asset` that the user is providing.
+		/// 
+		/// # Errors
+		/// 
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is not active.
+		/// * If the user has not enough liquidity to supply.
+		/// * If the balance amount to supply is not valid.
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
+		/// underflows
+		/// 
+		/// # Events
+		/// 
+		/// If the function succeeds, it triggers an event:
+		/// 
+		/// * `DepositWithdrawn(who, balance)` if the lending pool was activated.
+		/// 
 		#[pallet::call_index(3)]
 		#[pallet::weight(Weight::default())]
 		pub fn withdraw(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
@@ -296,6 +372,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `borrow` function allows a user to borrow liquidity from a lending pool.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		/// that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// * `balance` - The amount of `asset` that the user is providing.
+		/// 
+		/// # Errors
+		/// 
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is not active.
+		/// * If the user has not enough liquidity to supply.
+		/// * If the balance amount to supply is not valid.
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
+		/// underflows
+		/// 
+		/// # Events
+		/// 
+		/// If the function succeeds, it triggers an event:
+		/// 
+		/// * `DepositBorrowed(who, balance)` if the lending pool was activated.
+		/// 
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::default())]
 		pub fn borrow(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
@@ -384,6 +488,11 @@ pub mod pallet {
 			LendingPoolStorage::<T>::insert(asset_pool, lending_pool);
 		
 			// TODO - Calculate the right amount
+			// let's calculate the amount of LP tokens to mint
+			// pro quota based on the total supply
+			
+			let total_issuance = T::Fungibles::total_issuance(asset.clone());
+			
 
 			// let's transfers the tokens (asset) from the users account into pallet account 
 			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
@@ -534,6 +643,33 @@ pub mod pallet {
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
+
+			// First, let's check the balance amount to supply is valid
+			ensure!(
+				balance > BalanceOf::<T>::zero(),
+				Error::<T>::InvalidLiquidityWithdrawal
+			);
+
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+
+			// let's check if the pool is active
+			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
+			ensure!(
+				pool.is_active() == true, 
+				Error::<T>::LendingPoolNotActive
+			);
+
+			// let's check the if the pool has enough liquidity
+			ensure!(
+				pool.reserve_balance >= balance,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
+
 			Ok(())
 		}
 
