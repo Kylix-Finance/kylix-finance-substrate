@@ -253,7 +253,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers two events:
 		///
-		/// * `LendingPoolAdded(asset_a)` if a new liquidity pool was created.
+		/// * `LendingPoolAdded(asset_a)` if a new lending pool was created.
 		/// * `DepositSupplied(asset_a, asset_b, amount_a, amount_b)` after the liquidity has been
 		///   successfully added.
 		#[pallet::call_index(0)]
@@ -298,16 +298,18 @@ pub mod pallet {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::default())]
-		pub fn borrow(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn borrow(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::do_borrow(&who, asset, balance)?;
 			Self::deposit_event(Event::DepositBorrowed { who, balance });
 			Ok(())
 		}
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::default())]
-		pub fn repay(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn repay(origin: OriginFor<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::do_repay(&who, asset, balance)?;
 			Self::deposit_event(Event::DepositRepaid { who, balance });
 			Ok(())
 		}
@@ -381,6 +383,8 @@ pub mod pallet {
 			let lending_pool = LendingPool::<T>::from(asset, balance);
 			LendingPoolStorage::<T>::insert(asset_pool, lending_pool);
 		
+			// TODO - Calculate the right amount
+
 			// let's transfers the tokens (asset) from the users account into pallet account 
 			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
 		
@@ -427,6 +431,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// This method supplies
 		pub fn do_supply(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
@@ -438,7 +443,7 @@ pub mod pallet {
 				Error::<T>::InvalidLiquiditySupply
 			);
 
-			// Second, let's check the if user has enough liquidity
+			// Second, let's check the if user has enough liquidity tp supply
 			let user_balance = T::Fungibles::balance(asset.clone(), who);
 			ensure!(
 				user_balance >= balance,
@@ -522,6 +527,20 @@ pub mod pallet {
 			// let's update the balances of the pool now
 			LendingPoolStorage::<T>::set(&asset_pool, pool);
 			
+			Ok(())
+		}
+
+		fn do_borrow(who: &T::AccountId,
+			asset:  AssetIdOf<T>,
+			balance: BalanceOf<T>
+		) -> DispatchResult {
+			Ok(())
+		}
+
+		fn do_repay(who: &T::AccountId,
+			asset:  AssetIdOf<T>,
+			balance: BalanceOf<T>
+		) -> DispatchResult {
 			Ok(())
 		}
 
