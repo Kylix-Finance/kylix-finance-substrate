@@ -72,7 +72,8 @@ pub mod pallet {
 	use frame_support::sp_runtime::traits::{AccountIdConversion,Zero,One};
 	use frame_support::traits::fungibles::{Inspect,Mutate,Create};
 	use frame_support::{traits::{fungible::{self},fungibles::{self},}, DefaultNoBound };
-	use frame_support::sp_runtime::traits::{CheckedAdd, CheckedSub};
+	use frame_support::sp_runtime::traits::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+	use frame_support::sp_runtime::Perbill;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -128,17 +129,16 @@ pub mod pallet {
 		pub id: AssetIdOf<T>, // the lending pool id
 		
 		pub reserve_balance: AssetBalanceOf<T>, // the available reserve of the lending pool
-		pub borrowed_balance: AssetBalanceOf<T>,
+		pub borrowed_balance: AssetBalanceOf<T>, // the borrowed balance of the lending pool
 		
-		pub activated: bool,
-		pub borrow_index: Rate,
-		pub exchange_rate: Rate,
-		pub borrow_rate: Rate,
-		pub supply_rate: Rate,
-		pub utilisation_ratio: Rate,
-		pub liquidation_threshold: Permill,
+		pub activated: bool, // is the pool active?
+		pub base_rate: Perbill, // defined by user, 10% base rate of the lending pool
+		pub exchange_rate: Perbill, // defined by user, 20% the exchange rate of the lending pool
 
-		/* minted token, kink */
+		pub borrow_rate: Perbill,
+		pub supply_rate: Perbill, 
+		//pub utilisation_ratio: Perbill, // formula: borrowed_balance/reserve_balance
+		pub liquidation_threshold: Perbill, // defined by user, 80% as default
 	}
 	impl<T: Config> LendingPool<T> {
 
@@ -148,13 +148,13 @@ pub mod pallet {
 				id, 
 				reserve_balance : balance,
 				borrowed_balance: AssetBalanceOf::<T>::zero(),
+				
 				activated: false,
-				borrow_index : Rate::one(),
-			 	exchange_rate: Rate::one(), 
-				borrow_rate: Rate::zero(),
-				supply_rate: Rate::zero(),
-				utilisation_ratio: Rate::zero(),
-				liquidation_threshold: Permill::one(), // should be 80%
+				base_rate : Perbill::from_percent(10), // Default 0.10 as base rate ratio
+				borrow_rate: Perbill::from_percent(20), // Default 0.20 as borrow rate ratio
+				exchange_rate: Perbill::zero(),
+				supply_rate: Perbill::zero(),
+				liquidation_threshold: Perbill::from_percent(80), // Default liquidation at 80%
 			}
 		}
 
@@ -164,6 +164,22 @@ pub mod pallet {
 
 		pub fn is_active(&self) -> bool {
 			self.activated == true
+		}
+
+		/// utilisation ratio calculated as borrowed_balance/reserve_balance
+		pub fn utilisation_ratio(&self) -> Perbill {
+
+			if self.is_empty() {
+				return Perbill::zero();
+			}
+
+			Perbill::from_rational(self.borrowed_balance, self.reserve_balance)
+		}
+
+		/// interest rate model calculated as base_rate + (borrow_rate * utilization_ratio)
+		pub fn interest_rate_model(&self) -> Perbill {
+
+			self.base_rate + (self.borrow_rate * self.utilisation_ratio())
 		}
 	}
 
@@ -513,14 +529,19 @@ pub mod pallet {
 			// Now we can safely create and store our lending pool with initial balance
 			let asset_pool = AssetPool::from(asset);
 			let lending_pool = LendingPool::<T>::from(asset, balance);
-			LendingPoolStorage::<T>::insert(asset_pool, lending_pool);
+			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
 		
-			// TODO - Calculate the right amount
-			// let's calculate the amount of LP tokens to mint
-			// pro quota based on the total supply
-			
+			// Let's calculate the amount of LP tokens to mint
+			// pro quota based on the total supply following the formula:
+			//
+			// minted_tokens = deposit * total_issuance / total_liquidity
+
 			let total_issuance = T::Fungibles::total_issuance(asset.clone());
-			
+			let minted_tokens = total_issuance
+				.checked_mul(&balance)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_div(&lending_pool.reserve_balance)
+				.ok_or(Error::<T>::OverflowError)?;
 
 			// let's transfers the tokens (asset) from the users account into pallet account 
 			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
@@ -531,7 +552,7 @@ pub mod pallet {
 			}
 	
 			// mints the lp tokens into the users account
-			T::Fungibles::mint_into(id, &who, balance)?;
+			T::Fungibles::mint_into(id, &who, minted_tokens)?;
 			
 			Ok(())
 		}
@@ -603,11 +624,24 @@ pub mod pallet {
 				Error::<T>::LendingPoolNotActive
 			);
 			
+			// Ok, now let's calculate the amount of LP tokens to mint
+			// pro quota based on the total supply and the total liquidity in the pool
+			// following the formula:
+			//
+			// minted_tokens = deposit * total_issuance / total_liquidity
+
+			let total_issuance = T::Fungibles::total_issuance(asset.clone());
+			let minted_tokens = total_issuance
+				.checked_mul(&balance)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_div(&pool.reserve_balance)
+				.ok_or(Error::<T>::OverflowError)?;
+
 			// let's transfers the tokens (asset) from the users account into pallet account 
 			T::Fungibles::transfer(asset.clone(), who, &Self::account_id(), balance, Preservation::Expendable)?;
 		
-			// mints the lp tokens into the users account
-			T::Fungibles::mint_into(pool.id, &who, balance)?;
+			// mints the LP tokens into the users account
+			T::Fungibles::mint_into(pool.id, &who, minted_tokens)?;
 
 			pool.reserve_balance = pool.reserve_balance
 				.checked_add(&balance)
@@ -621,6 +655,7 @@ pub mod pallet {
 
 		/// This method allows a user to withdraw liquidity from a lending pool.
 		/// The pool can be deactivated or not, but the user must have enough LP tokens to withdraw.
+		/// This method withdraw some liquidity from a liquidy pool and burns LP tokens of the user
 		fn do_withdrawal(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
@@ -657,9 +692,19 @@ pub mod pallet {
 			// Get the current reserves
 			let reserve_user = T::Fungibles::balance(asset.clone(), &Self::account_id());
 		
-			// Calculate the liquidity amount to withdraw
+			// Calculate the 
 			let total_issuance = T::Fungibles::total_issuance(pool.id.clone());
-		
+			
+			// Adjusted liquidity calculation
+			let interest = pool.interest_rate_model()
+				.mul_ceil(pool.borrowed_balance);
+
+			let l_adj = self.total_deposits
+				.checked_add(&interest)?;
+	
+			let share = Perbill::from_rational(amount_lp_tokens_burn, self.total_supply_lp_tokens);
+			let tokens_to_return = share.mul_ceil(l_adj);
+
 			pool.reserve_balance = pool.reserve_balance
 				.checked_sub(&balance)
 				.ok_or(Error::<T>::OverflowError)?;

@@ -1,10 +1,11 @@
 use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
+use frame_support::{parameter_types,traits::{ConstU16, ConstU64}, PalletId};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
+
 
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -13,13 +14,13 @@ frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: frame_system,
-		Balances: pallet_balances,
-		Timestamp: pallet_timestamp,
-		Aura: pallet_aura,
-		Grandpa: pallet_grandpa,
-		Balances: pallet_balances,
-		TransactionPayment: pallet_transaction_payment,
-		Sudo: pallet_sudo,
+	//	Balances: pallet_balances,
+	//	Timestamp: pallet_timestamp,
+	//	Aura: pallet_aura,
+	//	Grandpa: pallet_grandpa,
+	//	Balances: pallet_balances,
+	//	TransactionPayment: pallet_transaction_payment,
+	//	Sudo: pallet_sudo,
 		TemplateModule: pallet_template,
 	}
 );
@@ -29,8 +30,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
+	type RuntimeOrigin = Self::RuntimeOrigin;
+	type RuntimeCall = Self::RuntimeCall;
 	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -50,10 +51,14 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+parameter_types! {
+	pub const KylixPalletId: PalletId = PalletId(*b"kylixpdl");
+}
+
 impl pallet_template::Config for Test {
+	type PalletId = KylixPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type PalletId = TemplateModule;
 	
 	#[doc = r" Type to access the Balances Pallet."]
 	type NativeBalance = Balances;
@@ -61,10 +66,9 @@ impl pallet_template::Config for Test {
 	#[doc = r" Type to access the Assets Pallet."]
 	type Fungibles = Assets;
 	
-	#[doc = r" The origin which can add or remove LendingPools and update LendingPools (interest rate model, kink, activate, deactivate)."]
-	type ManagerOrigin;
+//	#[doc = r" The origin which can add or remove LendingPools and update LendingPools (interest rate model, kink, activate, deactivate)."]
+//	type ManagerOrigin = ();
 
-	
 }
 
 // Build genesis storage according to the mock runtime.
