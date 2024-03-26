@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-///! # The Lending pallet
+///! # The Lending pallet of Kylix
 ///!
 ///! ## Overview
 ///!
-///! The Lending pallet is responsible for managing the lending pools and the assets.
+///! The Lending pallet is responsible for managing the lending pools and the treasury operations.
 ///!
 ///! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
-///! leveraging a pool-based approach to aggregate assets from all users.
+///! offering a pool-based approach to aggregate assets from all users.
 ///!  
 ///! Interest rates adjust dynamically in response to the supply and demand conditions.
 ///! Additionally, for every lending positions a new token is minted, thus enabling the transfer of
@@ -26,6 +26,13 @@
 ///! 8. update_pool_rate_model()
 ///! 9. update_pool_kink()
 ///!
+/// 
+/// TODO: 
+/// 1. rename the pallet to `lending` and the module to `lending`
+/// 2. implement the `ManagerOrigin` type for reserve pool special operations
+/// 3. implement tests for the lending logic
+/// 4. implement the `WeightInfo` trait for the pallet
+/// 
 ///! Use case
 
 use frame_support::{
@@ -38,19 +45,21 @@ pub use pallet::*;
 /// Account Type Definition
 pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
 
-/// Asset Id
+/// Fungible Asset Id
 pub type AssetIdOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::AssetId;
-
 /// Fungible Balance
 pub type AssetBalanceOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::Balance;
 
 /// Native Balance
 pub type BalanceOf<T> = <<T as Config>::NativeBalance as fungible::Inspect<AccountOf<T>>>::Balance;
+//type BalanceOf<T> = <T as currency::Config>::Balance;
 
-//pub type BalanceOf<T> = <T as currency::Config>::Balance;
+/// Currency type from the token module
+//type CurrencyId<T> = <T as orml_tokens::Config>::CurrencyId;
 
-pub type Rate = FixedU128;
+pub type Timestamp = u64;
 pub type Ratio = Permill;
+pub type Rate = FixedU128;
 
 #[cfg(test)]
 mod mock;
@@ -66,6 +75,7 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::sp_runtime;
 	use frame_system::pallet_prelude::*;
 	use frame_support::traits::tokens::Preservation;
 	use frame_support::PalletId;
@@ -73,7 +83,6 @@ pub mod pallet {
 	use frame_support::traits::fungibles::{Inspect,Mutate,Create};
 	use frame_support::{traits::{fungible::{self},fungibles::{self},}, DefaultNoBound };
 	use frame_support::sp_runtime::traits::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-	use frame_support::sp_runtime::Perbill;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -107,7 +116,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	/// The AssetPool definition. Used as the Key in the lending pool storage
+	/// The AssetPool definition. Used as the KEY in the lending pool storage
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
 	#[scale_info(skip_type_params(T))]
 	pub struct AssetPool<T: Config> {
@@ -118,27 +127,34 @@ pub mod pallet {
 			AssetPool { asset }
 		}
 	}
+
 	/// Definition of the Lending Pool Reserve Entity
+	/// 
 	/// A struct to hold the LendingPool and all its properties, 
 	/// used as Value in the lending pool storage
+	/// 
+	/// Current interest rate model being used is the "Jump Model"
 	/// 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
 	#[scale_info(skip_type_params(T))]
 	pub struct LendingPool<T: Config> {
 		
 		pub id: AssetIdOf<T>, // the lending pool id
-		
-		pub reserve_balance: AssetBalanceOf<T>, // the available reserve of the lending pool
-		pub borrowed_balance: AssetBalanceOf<T>, // the borrowed balance of the lending pool
-		
-		pub activated: bool, // is the pool active?
-		pub base_rate: Perbill, // defined by user, 10% base rate of the lending pool
-		pub exchange_rate: Perbill, // defined by user, 20% the exchange rate of the lending pool
+		pub lend_token_id: AssetIdOf<T>, // the lending token id
 
-		pub borrow_rate: Perbill,
-		pub supply_rate: Perbill, 
-		//pub utilisation_ratio: Perbill, // formula: borrowed_balance/reserve_balance
-		pub liquidation_threshold: Perbill, // defined by user, 80% as default
+		pub reserve_balance: AssetBalanceOf<T>, // the reserve supplied to the lending pool
+		pub borrowed_balance: AssetBalanceOf<T>, // the borrowed balance from the lending pool
+		
+		pub activated: bool, // is the pool active or in pending state?
+		pub base_rate: Ratio, // defined by user, 2.5% Default base rate 
+		pub exchange_rate: Ratio, // defined by user, 20% Default exchange rate
+
+    	pub collateral_factor: Ratio, // The secure collateral ratio
+		pub liquidation_threshold: Ratio, // defined by user, 75% as default
+		pub reserve_factor: Ratio, // 
+
+		pub borrow_rate: Ratio, // the borrow rate of the pool
+		pub supply_rate: Ratio, // the supply rate of the pool
 	}
 	impl<T: Config> LendingPool<T> {
 
@@ -146,15 +162,22 @@ pub mod pallet {
 		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
 			LendingPool { 
 				id, 
+				lend_token_id: AssetIdOf::<T>::zero(),
+
 				reserve_balance : balance,
 				borrowed_balance: AssetBalanceOf::<T>::zero(),
 				
 				activated: false,
-				base_rate : Perbill::from_percent(10), // Default 0.10 as base rate ratio
-				borrow_rate: Perbill::from_percent(20), // Default 0.20 as borrow rate ratio
-				exchange_rate: Perbill::zero(),
-				supply_rate: Perbill::zero(),
-				liquidation_threshold: Perbill::from_percent(80), // Default liquidation at 80%
+
+				base_rate : Ratio::from_percent(10), // Default 0.10 as base rate ratio
+				borrow_rate: Ratio::from_percent(20), // Default 0.20 as borrow rate ratio
+
+				collateral_factor: Ratio::from_percent(50), // Default collateral factor at 50%
+				liquidation_threshold: Ratio::from_percent(80), // Default liquidation at 80%
+				reserve_factor: Ratio::from_percent(10), // Default reserve factor at 10%
+
+				supply_rate: Ratio::zero(),
+				exchange_rate: Ratio::zero(),
 			}
 		}
 
@@ -166,19 +189,21 @@ pub mod pallet {
 			self.activated == true
 		}
 
-		/// utilisation ratio calculated as borrowed_balance/reserve_balance
-		pub fn utilisation_ratio(&self) -> Perbill {
+		///
+		/// Ur -> utilisation ratio calculated as borrowed_balance/reserve_balance
+		///
+		pub fn utilisation_ratio(&self) -> Ratio {
 
 			if self.is_empty() {
-				return Perbill::zero();
+				return Ratio::zero();
 			}
-
-			Perbill::from_rational(self.borrowed_balance, self.reserve_balance)
+			Ratio::from_rational(self.borrowed_balance, self.reserve_balance)
 		}
 
-		/// interest rate model calculated as base_rate + (borrow_rate * utilization_ratio)
-		pub fn interest_rate_model(&self) -> Perbill {
-
+		///
+		/// The BORROW interest rate model calculated as base_rate + (borrow_rate * utilization_ratio)
+		///
+		pub fn interest_rate_model(&self) -> Permill {
 			self.base_rate + (self.borrow_rate * self.utilisation_ratio())
 		}
 	}
@@ -193,6 +218,65 @@ pub mod pallet {
 	#[pallet::getter(fn reserve_pools)]
 	pub type LendingPoolStorage<T> =
 		StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>, ValueQuery>;
+
+	// Now we need to define the properties of the underlying asset used in the lending pool
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
+	#[scale_info(skip_type_params(T))]
+	pub struct UnderlyingAsset<T: Config> {
+	
+		pub underlying_asset_id: AssetIdOf<T>, // Mapping of lend_token id to underlying currency id
+		pub last_accrued_interest: Timestamp, // the timestamp of the last calculation of accrued interest
+
+		pub total_borrowed: AssetBalanceOf<T>, // the total amount borrowed from the pool
+		pub total_supply: AssetBalanceOf<T>, // the total amount supplied to the pool
+
+		pub borrow_index: Rate, // accumulator of the total earned interest rate
+		pub exchange_rate: Rate, // the exchange rate from the associated lend token to the underlying asset
+		pub borrow_rate: Rate, // the current borrow rate
+		pub supply_rate: Rate, // the current supply rate
+
+		pub utilization_rate: Rate, // the current utilization rate
+
+		pub reward_supply_speed: AssetBalanceOf<T>, // the current reward supply speed
+		pub reward_borrow_speed: AssetBalanceOf<T>, // the current reward borrow speed
+		pub reward_accrued: AssetBalanceOf<T>, // the current reward accrued
+	}
+
+	/// Kylix runtime storage items
+	///
+	/// Lending pools Assets Properties
+	///
+	/// StorageMap CurrencyId<T> { AssetId } => LendingAsset { PoolId, Balance }
+	///
+	/// The timestamp of the last calculation of accrued interest
+    #[pallet::storage]
+    #[pallet::getter(fn last_accrued_interest_time)]
+    pub type UnderlyingAssetStorage<T: Config> = StorageMap<_, Blake2_128Concat, AssetIdOf<T>, UnderlyingAsset<T>, ValueQuery>;
+
+	/// The minimum (starting) and maximum exchange rate allowed for a market.
+	#[pallet::storage]
+	#[pallet::getter(fn max_exchange_rate)]
+	pub type MinMaxExchangeRate<T: Config> = StorageValue<_, (Rate, Rate), ValueQuery>;
+
+	#[pallet::genesis_config]
+    #[derive(frame_support::DefaultNoBound)]
+    pub struct GenesisConfig<T: Config> {
+        pub _marker: PhantomData<T>,
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
+        fn build(&self) {
+			let max_exchange_rate: u128 = 1_000_000_000_000_000_000; // 1
+			let min_exchange_rate: u128 = 20_000_000_000_000_000; // 0.02
+
+			let rmax = Rate::from_inner(max_exchange_rate);
+			let rmin = Rate::from_inner(min_exchange_rate);
+
+            MinMaxExchangeRate::<T>::put((rmin,rmax));
+        }
+    }
+
 
 	/// Events to inform users when important changes are made.
 	#[pallet::event]
@@ -470,6 +554,32 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `deactivate_lending_pool` function allows a user to deactivate a lending pool that is not empty.
+		/// Once a liquidity pool gets deactivated supplies operations can not be performed
+		/// otherwise only withdrawals.
+		/// 
+		/// # Arguments
+		/// 
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		/// that creates the lending pool and add some liquidity.
+		/// * `asset` - The identifier for the type of asset that the user wants to provide.
+		/// 
+		/// # Errors
+		/// 
+		/// This function will return an error in the following scenarios:
+		/// 
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		/// * If the provided assets do not exist.
+		/// * If the pool does not exist.
+		/// * If the pool is already deactivated.
+		/// * If the pool is empty.
+		/// 
+		/// # Events
+		/// 
+		/// If the function succeeds, it triggers an event:
+		/// 
+		/// * `LendingPoolDeactivated(asset_a)` if the lending pool was deactivated.
+		/// 
 		#[pallet::call_index(7)]
 		#[pallet::weight(Weight::default())]
 		pub fn deactivate_lending_pool(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
@@ -495,10 +605,12 @@ pub mod pallet {
 		}
 	}
 
+	// the main logic of the pallet
 	impl<T: Config> Pallet<T> {
 
 		// This method creates a NEW lending pool and mints LP tokens back to the user. 
-		// At this very moment, the user is the first liquidity provider, 
+		// At this moment, the user is the first liquidity provider
+		// The pool must not exist and the user must have enough liquidity to supply.
 		pub fn do_create_lending_pool(
 			who: &T::AccountId,
 			id: AssetIdOf<T>,
@@ -526,10 +638,32 @@ pub mod pallet {
 				Error::<T>::LendingPoolAlreadyExists
 			);
 
-			// Now we can safely create and store our lending pool with initial balance
+			// Now we can safely create and store our lending pool with an initial balance...
 			let asset_pool = AssetPool::from(asset);
 			let lending_pool = LendingPool::<T>::from(asset, balance);
+
 			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
+
+			// ...and save the information related to the underlying asset.
+			//
+			// TODO: It is not convenient to instantiate a Default here that anyway needs to be updated 
+			// at a later point. We should instead have a way to define the properties of the underlying 
+			// asset from outside.
+			let underlying_asset = UnderlyingAsset::<T> {
+				underlying_asset_id: asset,
+				last_accrued_interest: 0,
+				total_borrowed: BalanceOf::<T>::zero(),
+				total_supply: BalanceOf::<T>::zero(),
+				borrow_index: Rate::one(),
+				exchange_rate: Rate::one(),
+				borrow_rate: Rate::one(),
+				supply_rate: Rate::one(),
+				utilization_rate: Rate::one(),
+				reward_supply_speed: BalanceOf::<T>::zero(),
+				reward_borrow_speed: BalanceOf::<T>::zero(),
+				reward_accrued: BalanceOf::<T>::zero(),
+			};
+			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 		
 			// Let's calculate the amount of LP tokens to mint
 			// pro quota based on the total supply following the formula:
@@ -656,7 +790,7 @@ pub mod pallet {
 		/// This method allows a user to withdraw liquidity from a lending pool.
 		/// The pool can be deactivated or not, but the user must have enough LP tokens to withdraw.
 		/// This method withdraw some liquidity from a liquidy pool and burns LP tokens of the user
-		fn do_withdrawal(who: &T::AccountId,
+		pub fn do_withdrawal(who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
@@ -690,7 +824,7 @@ pub mod pallet {
 			);
 		
 			// Get the current reserves
-			let reserve_user = T::Fungibles::balance(asset.clone(), &Self::account_id());
+			/*let reserve_user = T::Fungibles::balance(asset.clone(), &Self::account_id());
 		
 			// Calculate the 
 			let total_issuance = T::Fungibles::total_issuance(pool.id.clone());
@@ -698,12 +832,12 @@ pub mod pallet {
 			// Adjusted liquidity calculation
 			let interest = pool.interest_rate_model()
 				.mul_ceil(pool.borrowed_balance);
-
-			let l_adj = self.total_deposits
-				.checked_add(&interest)?;
+			*/
+		//	let l_adj = self.total_deposits
+		//		.checked_add(&interest)?;
 	
-			let share = Perbill::from_rational(amount_lp_tokens_burn, self.total_supply_lp_tokens);
-			let tokens_to_return = share.mul_ceil(l_adj);
+		//	let share = Perbill::from_rational(amount_lp_tokens_burn, self.total_supply_lp_tokens);
+		//	let tokens_to_return = share.mul_ceil(l_adj);
 
 			pool.reserve_balance = pool.reserve_balance
 				.checked_sub(&balance)
