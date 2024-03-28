@@ -108,8 +108,7 @@ pub mod pallet {
 			+ fungibles::Mutate<Self::AccountId>
 			+ fungibles::Create<Self::AccountId>;
 
-		/// The origin which can add or remove LendingPools and update LendingPools (interest rate
-		/// model, kink, activate, deactivate). TODO
+		/// The origin which can add or remove LendingPools and update LendingPools TODO
 		// type ManagerOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for extrinsics in this pallet.
@@ -125,6 +124,42 @@ pub mod pallet {
 	impl<T: Config> AssetPool<T> {
 		pub fn from(asset: AssetIdOf<T>) -> Self {
 			AssetPool { asset }
+		}
+	}
+
+	// let's hardcore a default interest rate model (the same AAVE has)
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
+	#[scale_info(skip_type_params(T))]
+	pub struct InterestRateModel {
+		base_rate: Ratio,
+		slope1: Ratio,
+		slope2: Ratio,
+		kink: Ratio,
+	}
+	impl InterestRateModel {
+		
+		/// Default interest rate model. 
+		/// TODO: change to a dynamic model defined by the pool creator 
+		pub fn hardcoded_default_interest() -> Self {
+			InterestRateModel { 
+				base_rate : Ratio::from_percent(10), 
+				slope1 : Ratio::from_percent(4), 
+				slope2 : Ratio::from_percent(75), 
+				kink: Ratio::from_percent(80),
+			}
+		}
+
+		pub fn base_rate(&self) -> Ratio {
+			self.base_rate
+		}
+		pub fn slope1(&self) -> Ratio {
+			self.slope1
+		}
+		pub fn slope2(&self) -> Ratio {
+			self.slope2
+		}
+		pub fn kink(&self) -> Ratio {
+			self.kink
 		}
 	}
 
@@ -146,13 +181,18 @@ pub mod pallet {
 		pub borrowed_balance: AssetBalanceOf<T>, // the borrowed balance from the lending pool
 		
 		pub activated: bool, // is the pool active or in pending state?
-		pub base_rate: Ratio, // defined by user, 2.5% Default base rate 
+
+		// defined by pool creator, but hardcoded default interest rate model for the time being
+		pub interest_model: InterestRateModel, 
+		
+		// 'reserve_factor' determines the split between what the depositors enjoy versus what flows into Kylix's treasury. 
+		pub reserve_factor: Ratio, 
+		
 		pub exchange_rate: Ratio, // defined by user, 20% Default exchange rate
 
     	pub collateral_factor: Ratio, // The secure collateral ratio
 		pub liquidation_threshold: Ratio, // defined by user, 75% as default
-		pub reserve_factor: Ratio, // 
-
+		
 		pub borrow_rate: Ratio, // the borrow rate of the pool
 		pub supply_rate: Ratio, // the supply rate of the pool
 	}
@@ -162,49 +202,124 @@ pub mod pallet {
 		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
 			LendingPool { 
 				id, 
-				lend_token_id: AssetIdOf::<T>::zero(),
+				lend_token_id: AssetIdOf::<T>::zero(), // TODO: implement the lending token id
 
 				reserve_balance : balance,
 				borrowed_balance: AssetBalanceOf::<T>::zero(),
 				
 				activated: false,
 
-				base_rate : Ratio::from_percent(10), // Default 0.10 as base rate ratio
+				interest_model : InterestRateModel::hardcoded_default_interest(),
+				reserve_factor: Ratio::from_percent(10), // Default reserve factor at 10%
 				borrow_rate: Ratio::from_percent(20), // Default 0.20 as borrow rate ratio
 
 				collateral_factor: Ratio::from_percent(50), // Default collateral factor at 50%
 				liquidation_threshold: Ratio::from_percent(80), // Default liquidation at 80%
-				reserve_factor: Ratio::from_percent(10), // Default reserve factor at 10%
+				
 
 				supply_rate: Ratio::zero(),
 				exchange_rate: Ratio::zero(),
 			}
 		}
 
+		///
+		/// Is the pool empty?
+		/// 
 		pub fn is_empty(&self) -> bool {
 			self.reserve_balance.cmp(&BalanceOf::<T>::zero()).is_eq()
 		}
 
+		///
+		/// is the pool active?
+		/// 
 		pub fn is_active(&self) -> bool {
 			self.activated == true
 		}
 
 		///
-		/// Ur -> utilisation ratio calculated as borrowed_balance/reserve_balance
+		/// Ut -> utilisation ratio calculated as 
+		/// 	(borrowed_balance / borrowed_balance) + reserve_balance
 		///
-		pub fn utilisation_ratio(&self) -> Ratio {
+		pub fn utilisation_ratio(&self) -> Result<Ratio, Error<T>> {
 
-			if self.is_empty() {
-				return Ratio::zero();
+			if self.is_empty() || self.reserve_balance.is_zero() {
+				return Ok(Ratio::zero());
 			}
-			Ratio::from_rational(self.borrowed_balance, self.reserve_balance)
+
+			let denominator = self.borrowed_balance
+				.checked_add(&self.reserve_balance)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			Ok(Ratio::from_rational(self.borrowed_balance, denominator))
 		}
 
 		///
-		/// The BORROW interest rate model calculated as base_rate + (borrow_rate * utilization_ratio)
+		/// The BORROW interest rate model calculated as 
+		/// 
+		/// if (utilisation_ratio <= kink) 
+		/// 	base_rate + (utilization_ratio/kink) * slope1
 		///
-		pub fn interest_rate_model(&self) -> Permill {
-			self.base_rate + (self.borrow_rate * self.utilisation_ratio())
+		/// if (utilisation_ratio > kink)
+		/// 	base_rate + slope1 + ((utilisation_ratio - kink)/(1 - kink)) * slope2
+		/// 
+		pub fn borrow_interest_rate(&self) -> Result<Permill, Error<T>> {
+
+			if self.borrowed_balance.is_zero() || self.reserve_balance.is_zero() {
+				return Ok(Permill::zero());
+			}
+
+			// TODO: There's definitely a better way to do this
+			let utilisation_ratio = self.utilisation_ratio()?.deconstruct();
+			let base = self.interest_model.base_rate().deconstruct();
+			let slope1 = self.interest_model.slope1().deconstruct();
+			let slope2 = self.interest_model.slope2().deconstruct();
+			let kink = self.interest_model.kink().deconstruct();
+
+			if utilisation_ratio <= kink {
+
+				let res = utilisation_ratio
+					.checked_div(kink)
+					.ok_or(Error::<T>::OverflowError)?
+					.checked_mul(slope1)
+					.ok_or(Error::<T>::OverflowError)?;
+
+				let borrow_rate = base.checked_add(res).
+					ok_or(Error::<T>::OverflowError)?;
+
+				return Ok(Ratio::from_percent(borrow_rate));
+			}
+
+			let numerator = utilisation_ratio
+				.checked_sub(kink)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let denominator = 100
+				.checked_sub(&kink)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let partial = slope2
+				.checked_mul(numerator)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_div(denominator)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let ut = base
+				.checked_add(slope1)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(partial)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			Ok(Ratio::from_percent(ut))
+		}
+
+		///
+		/// The SUPPLY interest rate model calculated as 
+		/// 
+		/// (borrow_rate * utilization_ratio) * (1 - reserve_factor)
+		///
+		pub fn supply_interest_rate(&self) -> Permill {
+			//(self.borrow_rate * self.utilisation_ratio()) * (1 - self.reserve_factor)
+			Permill::zero()
 		}
 	}
 
