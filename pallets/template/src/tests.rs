@@ -1,7 +1,7 @@
 
 use crate::{mock::*, 
 	Error, Event, 
-	LendingPool};
+	LendingPool, LendingPoolId};
 
 use frame_support::{assert_noop, assert_ok};
 //use frame_system::Origin;
@@ -21,6 +21,8 @@ const ALICE: SignedOrigin = 1u64;
 const BOB: SignedOrigin = 2u64;
 
 const DOT: Token = 1u32;
+
+const LENDING_POOL_ID : LendingPoolId = 0;
 
 // Test helper for creating an account and minting a specific token
 fn setup_test_account(token: Token, address: u64, amount: BalanceAmount) {
@@ -86,7 +88,7 @@ fn test_utilisation_rate_with_some_supply_and_borrowing2() {
 }
 
 #[test]
-fn try_to_supply() {
+fn try_to_supply_no_lending_pool() {
 	new_test_ext().execute_with(|| {
 
 		setup_test_account(DOT, ALICE, 1_000_000);
@@ -94,9 +96,37 @@ fn try_to_supply() {
 		// Supply
 		assert_noop!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000), 
 			Error::<Test>::LendingPoolDoesNotExist);
+	});
+}
+
+#[test]
+fn try_to_supply_no_liquidity() {
+	new_test_ext().execute_with(|| {
 			
 		// Supply
 		assert_noop!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 1_000), 
 			Error::<Test>::NotEnoughLiquiditySupply);
+	});
+}
+
+#[test]
+fn try_to_create_lending_pool() {
+	new_test_ext().execute_with(|| {
+
+		setup_test_account(DOT, ALICE, 1_000_000);
+
+		assert_ok!(TemplateModule::create_lending_pool(RuntimeOrigin::signed(ALICE), LENDING_POOL_ID, DOT, 1_000));
+	});
+}
+
+#[test]
+fn try_to_create_lending_pool_and_supply_not_yet_active() {
+	new_test_ext().execute_with(|| {
+
+		setup_test_account(DOT, ALICE, 1_000_000);
+	
+		assert_ok!(TemplateModule::create_lending_pool(RuntimeOrigin::signed(ALICE), LENDING_POOL_ID, DOT, 1_000));
+		assert_noop!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000), 
+			Error::<Test>::LendingPoolNotActive);
 	});
 }

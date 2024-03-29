@@ -138,4 +138,11 @@ You can also find the source code and instructions for hosting your instance on 
 
 Kylix Finance is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
 
-I appreciate very much your feedback!
+
+1. The pitch deck is missing a couple of slides pointed out by @chris.casini (competitors, tokenomics)
+2. The whitepaper just started https://typst.app/project/r2X0n4utkuHszwXiEKABOT
+3. Mockups and wireframes design are under work from @frateorion https://drive.google.com/drive/folders/1PQ0o80manZsbrESuaVcHQGDyO9OXf3R6
+4. Data models/API are defined in the poc, but we need to describe them
+5. Overview of the tech stack still need to be written 
+6. Documentation of core components, etc still need to be written
+7. Poc is under development both from backend substrate and from frontend side
