@@ -47,6 +47,7 @@ pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Fungible Asset Id
 pub type AssetIdOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::AssetId;
+
 /// Fungible Balance
 pub type AssetBalanceOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<AccountOf<T>>>::Balance;
 
@@ -54,12 +55,10 @@ pub type AssetBalanceOf<T> = <<T as Config>::Fungibles as fungibles::Inspect<Acc
 pub type BalanceOf<T> = <<T as Config>::NativeBalance as fungible::Inspect<AccountOf<T>>>::Balance;
 //type BalanceOf<T> = <T as currency::Config>::Balance;
 
-/// Currency type from the token module
-//type CurrencyId<T> = <T as orml_tokens::Config>::CurrencyId;
-
 pub type Timestamp = u64;
-pub type Ratio = Permill;
 pub type Rate = FixedU128;
+pub type Ratio = Permill;
+pub type LendingPoolId = u32;
 
 #[cfg(test)]
 mod mock;
@@ -83,6 +82,7 @@ pub mod pallet {
 	use frame_support::traits::fungibles::{Inspect,Mutate,Create};
 	use frame_support::{traits::{fungible::{self},fungibles::{self},}, DefaultNoBound };
 	use frame_support::sp_runtime::traits::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use sp_runtime::FixedPointNumber;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -131,10 +131,10 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd, DefaultNoBound)]
 	#[scale_info(skip_type_params(T))]
 	pub struct InterestRateModel {
-		base_rate: Ratio,
-		slope1: Ratio,
-		slope2: Ratio,
-		kink: Ratio,
+		base_rate: Rate,
+		slope1: Rate,
+		slope2: Rate,
+		kink: Rate,
 	}
 	impl InterestRateModel {
 		
@@ -142,23 +142,23 @@ pub mod pallet {
 		/// TODO: change to a dynamic model defined by the pool creator 
 		pub fn hardcoded_default_interest() -> Self {
 			InterestRateModel { 
-				base_rate : Ratio::from_percent(10), 
-				slope1 : Ratio::from_percent(4), 
-				slope2 : Ratio::from_percent(75), 
-				kink: Ratio::from_percent(80),
+				base_rate : Rate::saturating_from_rational(2,100), 
+				slope1 : Rate::saturating_from_rational(4,100), 
+				slope2 : Rate::saturating_from_rational(75,100), 
+				kink: Rate::saturating_from_rational(80,100),
 			}
 		}
 
-		pub fn base_rate(&self) -> Ratio {
+		pub fn base_rate(&self) -> Rate {
 			self.base_rate
 		}
-		pub fn slope1(&self) -> Ratio {
+		pub fn slope1(&self) -> Rate {
 			self.slope1
 		}
-		pub fn slope2(&self) -> Ratio {
+		pub fn slope2(&self) -> Rate {
 			self.slope2
 		}
-		pub fn kink(&self) -> Ratio {
+		pub fn kink(&self) -> Rate {
 			self.kink
 		}
 	}
@@ -174,7 +174,7 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct LendingPool<T: Config> {
 		
-		pub id: AssetIdOf<T>, // the lending pool id
+		pub id: LendingPoolId, // the lending pool id
 		pub lend_token_id: AssetIdOf<T>, // the lending token id
 
 		pub reserve_balance: AssetBalanceOf<T>, // the reserve supplied to the lending pool
@@ -199,10 +199,10 @@ pub mod pallet {
 	impl<T: Config> LendingPool<T> {
 
 		// let's create a default reserve lending pool 
-		pub fn from(id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
+		pub fn from(id: LendingPoolId, lend_token_id: AssetIdOf<T>, balance: AssetBalanceOf<T>) -> Self {
 			LendingPool { 
 				id, 
-				lend_token_id: AssetIdOf::<T>::zero(), // TODO: implement the lending token id
+				lend_token_id,
 
 				reserve_balance : balance,
 				borrowed_balance: AssetBalanceOf::<T>::zero(),
@@ -223,26 +223,12 @@ pub mod pallet {
 		}
 
 		///
-		/// Is the pool empty?
-		/// 
-		pub fn is_empty(&self) -> bool {
-			self.reserve_balance.cmp(&BalanceOf::<T>::zero()).is_eq()
-		}
-
-		///
-		/// is the pool active?
-		/// 
-		pub fn is_active(&self) -> bool {
-			self.activated == true
-		}
-
-		///
 		/// Ut -> utilisation ratio calculated as 
-		/// 	(borrowed_balance / borrowed_balance) + reserve_balance
+		/// 	borrowed_balance / (borrowed_balance + reserve_balance)
 		///
 		pub fn utilisation_ratio(&self) -> Result<Ratio, Error<T>> {
 
-			if self.is_empty() || self.reserve_balance.is_zero() {
+			if self.is_empty() {
 				return Ok(Ratio::zero());
 			}
 
@@ -262,54 +248,60 @@ pub mod pallet {
 		/// if (utilisation_ratio > kink)
 		/// 	base_rate + slope1 + ((utilisation_ratio - kink)/(1 - kink)) * slope2
 		/// 
-		pub fn borrow_interest_rate(&self) -> Result<Permill, Error<T>> {
+		pub fn borrow_interest_rate(&self) -> Result<Rate, Error<T>> {
 
 			if self.borrowed_balance.is_zero() || self.reserve_balance.is_zero() {
-				return Ok(Permill::zero());
+				return Ok(Rate::zero());
 			}
 
-			// TODO: There's definitely a better way to do this
-			let utilisation_ratio = self.utilisation_ratio()?.deconstruct();
-			let base = self.interest_model.base_rate().deconstruct();
-			let slope1 = self.interest_model.slope1().deconstruct();
-			let slope2 = self.interest_model.slope2().deconstruct();
-			let kink = self.interest_model.kink().deconstruct();
+			let utilisation_ratio = self.utilisation_ratio()?;
+
+			let base = self.interest_model.base_rate();
+			let slope1 = self.interest_model.slope1();
+			let slope2 = self.interest_model.slope2();
+			let kink = self.interest_model.kink();
+
+			//println!("utilisation_ratio Pool1: {:#?}", utilisation_ratio);	
+
+			let utilisation_ratio : Rate = utilisation_ratio.into();
 
 			if utilisation_ratio <= kink {
 
 				let res = utilisation_ratio
-					.checked_div(kink)
+					.checked_div(&kink)
 					.ok_or(Error::<T>::OverflowError)?
-					.checked_mul(slope1)
+					.checked_mul(&slope1)
 					.ok_or(Error::<T>::OverflowError)?;
 
-				let borrow_rate = base.checked_add(res).
+				let borrow_rate = base.checked_add(&res).
 					ok_or(Error::<T>::OverflowError)?;
 
-				return Ok(Ratio::from_percent(borrow_rate));
+				return Ok(borrow_rate);
 			}
 
+			// utilisation_ratio > kink
+
 			let numerator = utilisation_ratio
-				.checked_sub(kink)
+				.checked_sub(&kink)
 				.ok_or(Error::<T>::OverflowError)?;
 
-			let denominator = 100
+			let denominator = Rate::saturating_from_rational(100,100) // 100%_
 				.checked_sub(&kink)
 				.ok_or(Error::<T>::OverflowError)?;
 
 			let partial = slope2
-				.checked_mul(numerator)
+				.checked_mul(&numerator)
 				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(denominator)
+				.checked_div(&denominator)
 				.ok_or(Error::<T>::OverflowError)?;
 
 			let ut = base
-				.checked_add(slope1)
+				.checked_add(&slope1)
 				.ok_or(Error::<T>::OverflowError)?
-				.checked_mul(partial)
+				.checked_mul(&partial)
 				.ok_or(Error::<T>::OverflowError)?;
 
-			Ok(Ratio::from_percent(ut))
+			Ok(ut)
 		}
 
 		///
@@ -320,6 +312,15 @@ pub mod pallet {
 		pub fn supply_interest_rate(&self) -> Permill {
 			//(self.borrow_rate * self.utilisation_ratio()) * (1 - self.reserve_factor)
 			Permill::zero()
+		}
+
+		/// self-explanatory helper methods
+		///
+		pub fn is_empty(&self) -> bool {
+			self.reserve_balance.cmp(&BalanceOf::<T>::zero()).is_eq()
+		}
+		pub fn is_active(&self) -> bool {
+			self.activated == true
 		}
 	}
 
@@ -473,7 +474,7 @@ pub mod pallet {
 		///   successfully added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
-		pub fn create_lending_pool(origin: OriginFor<T>, id: AssetIdOf<T>, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
+		pub fn create_lending_pool(origin: OriginFor<T>, id: LendingPoolId, asset : AssetIdOf<T>, balance: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_create_lending_pool(&who, id, asset, balance)?;
 			Self::deposit_event(Event::LendingPoolAdded { who : who.clone(), asset });
@@ -728,7 +729,7 @@ pub mod pallet {
 		// The pool must not exist and the user must have enough liquidity to supply.
 		pub fn do_create_lending_pool(
 			who: &T::AccountId,
-			id: AssetIdOf<T>,
+			id: LendingPoolId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
@@ -755,7 +756,7 @@ pub mod pallet {
 
 			// Now we can safely create and store our lending pool with an initial balance...
 			let asset_pool = AssetPool::from(asset);
-			let lending_pool = LendingPool::<T>::from(asset, balance);
+			let lending_pool = LendingPool::<T>::from(id, asset, balance);
 
 			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
 
@@ -965,7 +966,7 @@ pub mod pallet {
 		}
 
 		/// 
-		fn do_borrow(who: &T::AccountId,
+		fn do_borrow(_who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
@@ -999,10 +1000,23 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_repay(who: &T::AccountId,
+		fn do_repay(_who: &T::AccountId,
 			asset:  AssetIdOf<T>,
 			balance: BalanceOf<T>
 		) -> DispatchResult {
+
+			ensure!(
+				balance > BalanceOf::<T>::zero(),
+				Error::<T>::InvalidLiquidityWithdrawal
+			);
+
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(asset); 
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool), 
+				Error::<T>::LendingPoolDoesNotExist
+			);
+
 			Ok(())
 		}
 
@@ -1040,5 +1054,16 @@ pub mod pallet {
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
+
+		// create and mint into an account
+		pub fn create_and_mint(
+			asset_id: AssetIdOf<T>, 
+			who: T::AccountId,
+			asset_balance: AssetBalanceOf<T>) -> DispatchResult {
+				T::Fungibles::create(asset_id.clone(), Self::account_id(), true, One::one())?;
+				T::Fungibles::mint_into(asset_id.clone(), &who, asset_balance)?;	
+				Ok(())
+		}
+
 	}
 }

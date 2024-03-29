@@ -4810,6 +4810,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
+ "log",
  "pallet-assets",
  "pallet-balances",
  "pallet-timestamp",
