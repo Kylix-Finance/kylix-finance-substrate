@@ -74,7 +74,10 @@ fn test_utilisation_rate_with_some_supply_and_borrowing() {
 	assert_eq!(ut, Permill::from_percent(50)); // 5000/10000 = 50%
 
 	let br = pool.borrow_interest_rate().unwrap();
-	assert_eq!(br, Rate::from_float(0.045)); // 4.5%
+	assert_eq!(br, Rate::from_float(0.045)); // 4.5% 
+	
+	// 4.5% for 50% utilisation rate.
+	// you can verify this visually from https://www.desmos.com/calculator/fnj0ctpqn9
 }
 
 #[test]
@@ -126,6 +129,19 @@ fn try_to_create_lending_pool_and_supply_not_yet_active() {
 		setup_test_account(DOT, ALICE, 1_000_000);
 	
 		assert_ok!(TemplateModule::create_lending_pool(RuntimeOrigin::signed(ALICE), LENDING_POOL_ID, DOT, 1_000));
+		assert_noop!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000), 
+			Error::<Test>::LendingPoolNotActive);
+	});
+}
+
+#[test]
+fn try_to_create_lending_pool_and_supply_active() {
+	new_test_ext().execute_with(|| {
+
+		setup_test_account(DOT, ALICE, 1_000_000);
+	
+		assert_ok!(TemplateModule::create_lending_pool(RuntimeOrigin::signed(ALICE), LENDING_POOL_ID, DOT, 1_000));
+		//TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), LENDING_POOL_ID).unwrap();
 		assert_noop!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000), 
 			Error::<Test>::LendingPoolNotActive);
 	});
