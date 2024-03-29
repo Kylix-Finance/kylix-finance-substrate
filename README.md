@@ -1,5 +1,7 @@
-# Kylix Finance - The cross-chain Lending Dapp
+# Kylix Finance - The Hub Lending Parachain
 ### Kylix is a substrate Lending Dapp that implements Compound V2 style functionalities for lending and borrowing cross-chain assets 
+
+Kylix Finance is a Collateralized Debt Position (CDP) parachain with an integrated marketplace for bidding on liquidated collateral.
 
 [<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/kylix-finance/)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -96,6 +98,12 @@ Use the following command to build the node without launching it:
 cargo build --release
 ```
 
+to test with logging, use:
+
+```sh
+RUST_LOG=runtime=debug cargo t -- --nocapture
+```sh
+
 ### Single-Node Development Chain
 
 The following command starts a single-node development chain that doesn't persist state:
@@ -116,32 +124,7 @@ To start the development chain with detailed logging, run the following command:
 RUST_BACKTRACE=1 ./target/release/node-template -ldebug --dev
 ```
 
-Development chains:
-
-- Maintain state in a `tmp` folder while the node is running.
-- Use the **Alice** and **Bob** accounts as default validator authorities.
-- Use the **Alice** account as the default `sudo` account.
-- Are preconfigured with a genesis state (`/node/src/chain_spec.rs`) that includes several prefunded development accounts.
-
-To persist chain state between runs, specify a base path by running a command similar to the following:
-
-```sh
-// Create a folder to use as the db base path
-$ mkdir my-chain-state
-
-// Use of that folder to store the chain state
-$ ./target/release/node-template --dev --base-path ./my-chain-state/
-
-// Check the folder structure created inside the base path after running the chain
-$ ls ./my-chain-state
-chains
-$ ls ./my-chain-state/chains/
-dev
-$ ls ./my-chain-state/chains/dev
-db keystore network
-```
-
-### Connect with Polkadot-JS Apps Front-End
+### Connect with Polkadot-JS Apps Front-End (TODO)
 
 After you start the node template locally, you can interact with it using the hosted version of the [Polkadot/Substrate Portal](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) front-end by connecting to the local node endpoint.
 A hosted version is also available on [IPFS (redirect) here](https://dotapps.io/) or [IPNS (direct) here](ipns://dotapps.io/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer).
@@ -149,7 +132,7 @@ You can also find the source code and instructions for hosting your instance on 
 
 ### Future Improvements
 
-0. TODO
+0. a lot.
 
 ## Contribution
 
