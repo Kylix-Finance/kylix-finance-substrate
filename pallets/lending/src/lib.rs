@@ -261,8 +261,6 @@ use sp_runtime::FixedPointNumber;
 			let slope2 = self.interest_model.slope2();
 			let kink = self.interest_model.kink();
 
-			//println!("utilisation_ratio Pool1: {:#?}", utilisation_ratio);	
-
 			let utilisation_ratio : Rate = utilisation_ratio.into();
 
 			if utilisation_ratio <= kink {
@@ -309,9 +307,22 @@ use sp_runtime::FixedPointNumber;
 		/// 
 		/// (borrow_rate * utilization_ratio) * (1 - reserve_factor)
 		///
-		pub fn supply_interest_rate(&self) -> Permill {
-			//(self.borrow_rate * self.utilisation_ratio()) * (1 - self.reserve_factor)
-			Permill::zero()
+		pub fn supply_interest_rate(&self) -> Result<Rate, Error<T>> {
+			//
+			let borrow_rate = self.borrow_interest_rate()?;
+			let utilisation_ratio = self.utilisation_ratio()?;
+			
+			let reserved = Permill::from_percent(100)
+				.checked_sub(&self.reserve_factor)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let res = borrow_rate
+				.checked_mul(&utilisation_ratio.into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(&reserved.into())
+				.ok_or(Error::<T>::OverflowError)?;
+
+			Ok(res)
 		}
 
 		/// self-explanatory helper methods
