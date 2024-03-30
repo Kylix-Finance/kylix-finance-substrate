@@ -29,6 +29,27 @@ A collateralized loan gives borrowers more time to use their funds in return for
 Kylix Finance currently exposes to the world 9 defined extrinsic:
 
 <details>
+<summary><h3>create_lending_pool</h3></summary>
+
+The `create_lending_pool` function allows a user to Create a new reserve and then supply it with some liquidity. Given an asset and its amount, it creates a new lending pool, if it does not already exist, and adds the provided liquidity/ The user will receive LP tokens in return in ratio.
+
+#### Parameters:
+* `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
+* `id`: AssetIdOf<T> - The pool id, provided by the user
+* `asset` - The identifier for the type of asset that the user wants to provide.
+* `balance` - The amount of `asset` that the user is providing.
+ 
+#### Errors:
+
+This function will return an error in the following scenarios:
+
+* If the origin is not signed (i.e., the function was not called by a user).
+* If the provided assets do not exist.
+* If `amount` is 0 or less.
+* If adding liquidity to the pool fails for any reason due to arithmetic overflows or underflows
+
+</details>
+<details>
 <summary><h3>do_supply</h3></summary>
 
 Create a new lending pool. Deposit initial liquidity (in the form of an asset). Create a new liquidity token. Mint & transfer to the caller accounts an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
