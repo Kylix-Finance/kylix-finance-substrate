@@ -1,5 +1,5 @@
 [package]
-name = "pallet-template"
+name = "lending"
 version = "4.0.0-dev"
 description = "Lending Pallet for Kylix"
 authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
