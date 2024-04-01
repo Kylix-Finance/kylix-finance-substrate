@@ -33,6 +33,9 @@ jobs:
       # Rust cache
       - uses: Swatinem/rust-cache@v2
 
+      - name: Update Dependencies
+        run: cargo update
+        
       - name: Check Build
         run: |
           SKIP_WASM_BUILD=1 cargo check --release
