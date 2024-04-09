@@ -537,8 +537,10 @@ pub mod pallet {
 		NotEnoughElegibleLiquidityToWithdraw,
 		/// Lending Pool is empty
 		LendingPoolIsEmpty,
-		// The classic Overflow Error
+		/// The classic Overflow Error
 		OverflowError,
+		/// The ID already exists
+		IdAlreadyExists,
 	}
 
 	#[pallet::call]
@@ -863,6 +865,9 @@ pub mod pallet {
 				Error::<T>::LendingPoolAlreadyExists
 			);
 
+			// make sure id does not exist already
+			ensure!(!T::Fungibles::asset_exists(id.clone()), Error::<T>::IdAlreadyExists);
+
 			// Now we can safely create and store our lending pool with an initial balance...
 			let asset_pool = AssetPool::from(asset);
 			let lending_pool = LendingPool::<T>::from(id, asset, balance);
@@ -910,10 +915,8 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			// checks if the liquidity token already exists and if not create it
-			if !T::Fungibles::asset_exists(id.clone()) {
-				T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
-			}
+			// create liquidity token
+			T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 
 			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
 			// mints the lp tokens into the users account
