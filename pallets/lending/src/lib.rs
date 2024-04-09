@@ -36,7 +36,7 @@
 ///! Use case
 use frame_support::{
 	pallet_prelude::*,
-	sp_runtime::{FixedU128, Permill},
+	sp_runtime::{FixedU128, Permill, SaturatedConversion},
 	traits::{fungible, fungibles},
 };
 pub use pallet::*;
@@ -412,6 +412,50 @@ pub mod pallet {
 		pub reward_accrued: AssetBalanceOf<T>,      // the current reward accrued
 	}
 
+	impl<T: Config> UnderlyingAsset<T> {
+		pub fn supply_index(&self) -> Result<Rate, Error<T>> {
+			// TODO: implement
+			Ok(Rate::one())
+		}
+		/// Calculates scaled deposit as
+		/// scaled_deposit = deposit / supply_index
+		pub fn scaled_deposit(
+			&self,
+			deposit: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let scaled_deposit = FixedU128::from_inner(deposit.saturated_into())
+				.checked_div(&self.supply_index()?)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(scaled_deposit)
+		}
+	}
+
+	//  The accrued supply_index of the supplier
+	#[derive(
+		Clone,
+		Encode,
+		Decode,
+		Eq,
+		PartialEq,
+		RuntimeDebug,
+		MaxEncodedLen,
+		TypeInfo,
+		PartialOrd,
+		DefaultNoBound,
+	)]
+	pub struct SupplyIndex {
+		pub supply_index: Rate,
+		pub last_accrued_interest_at: Timestamp,
+	}
+
+	impl SupplyIndex {
+		pub fn from(supply_index: Rate, last_accrued_interest_at: Timestamp) -> Self {
+			Self { supply_index, last_accrued_interest_at }
+		}
+	}
+
 	/// Kylix runtime storage items
 	///
 	/// Lending pools Assets Properties
@@ -428,6 +472,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn max_exchange_rate)]
 	pub type MinMaxExchangeRate<T: Config> = StorageValue<_, (Rate, Rate), ValueQuery>;
+
+	/// The accrued supply_index of accounts for assets
+	#[pallet::storage]
+	pub type SupplyIndexStorage<T: Config> =
+		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>), SupplyIndex, ValueQuery>;
 
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
@@ -839,7 +888,6 @@ pub mod pallet {
 				reward_borrow_speed: BalanceOf::<T>::zero(),
 				reward_accrued: BalanceOf::<T>::zero(),
 			};
-			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
 			// Let's calculate the amount of LP tokens to mint
 			// pro quota based on the total supply following the formula:
@@ -867,8 +915,17 @@ pub mod pallet {
 				T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 			}
 
+			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
 			// mints the lp tokens into the users account
-			T::Fungibles::mint_into(id, &who, minted_tokens)?;
+			T::Fungibles::mint_into(id, &who, scaled_minted_tokens)?;
+			// Create suppliers supply_index
+			let supply_index = SupplyIndex::from(
+				underlying_asset.supply_index()?,
+				underlying_asset.last_accrued_interest,
+			);
+			SupplyIndexStorage::<T>::insert((who, asset), supply_index);
+
+			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
 			Ok(())
 		}
