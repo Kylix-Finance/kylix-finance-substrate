@@ -885,7 +885,7 @@ pub mod pallet {
 			// the underlying asset from outside.
 			let underlying_asset = UnderlyingAsset::<T> {
 				underlying_asset_id: asset,
-				last_accrued_interest: 0,
+				last_accrued_interest: Self::now_in_seconds(),
 				total_borrowed: BalanceOf::<T>::zero(),
 				total_supply: BalanceOf::<T>::zero(),
 				borrow_index: Rate::one(),
@@ -1175,7 +1175,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::OverflowError)?;
 			let updated_supply_index = SupplyIndex {
 				supply_index: current_supply_index,
-				last_accrued_interest_at: T::Time::now().saturated_into(),
+				last_accrued_interest_at: Self::now_in_seconds(),
 			};
 			SupplyIndexStorage::<T>::insert((who, asset), updated_supply_index);
 
@@ -1186,6 +1186,13 @@ pub mod pallet {
 				balance: total_new_mint,
 			});
 			Ok(())
+		}
+
+		/// Returns the the block's timestamp in seconds as u64
+		fn now_in_seconds() -> u64 {
+			core::time::Duration::from_millis(T::Time::now().saturated_into::<u64>())
+				.as_secs()
+				.saturated_into::<u64>()
 		}
 	}
 }
