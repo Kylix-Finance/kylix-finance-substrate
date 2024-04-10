@@ -1179,7 +1179,7 @@ pub mod pallet {
 			};
 			SupplyIndexStorage::<T>::insert((who, asset), updated_supply_index);
 
-			T::Fungibles::mint_into(lp_id, who, total_new_mint)?;
+			T::Fungibles::mint_into(lp_id, who, scaled_balance)?;
 			Self::deposit_event(Event::LPTokenMinted {
 				who: who.clone(),
 				asset: lp_id,
