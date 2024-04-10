@@ -74,6 +74,7 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	pub use frame_support::traits::Time as MomentTime;
 	use frame_support::{
 		sp_runtime,
 		sp_runtime::traits::{
@@ -119,6 +120,8 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		type Time: MomentTime;
 	}
 
 	/// The AssetPool definition. Used as the KEY in the lending pool storage
@@ -1001,9 +1004,14 @@ pub mod pallet {
 				balance,
 				Preservation::Expendable,
 			)?;
+			let underlying_asset = UnderlyingAssetStorage::<T>::get(asset);
 
-			// mints the LP tokens into the users account
-			T::Fungibles::mint_into(pool.id, &who, minted_tokens)?;
+			// TODO: update the the UnderlyingAsset data
+			// Update UnderlyingAssetStorage
+
+			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
+			let current_supply_index = underlying_asset.supply_index()?;
+			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
 			pool.reserve_balance =
 				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
@@ -1135,14 +1143,37 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		// create and mint into an account
-		pub fn create_and_mint(
-			asset_id: AssetIdOf<T>,
-			who: T::AccountId,
-			asset_balance: AssetBalanceOf<T>,
+		/// Calculates the new_mint amount as follows,
+		/// 	let interest_on_old_deposit = old_balance * (current_supply_index - last_supply_index)
+		/// 	let total_new_mint = interest_on_old_deposit + new balance
+		/// Mint total_new_mint LP tokens into supplier's account
+		/// Update supplier data
+		pub fn update_and_mint(
+			who: &T::AccountId,
+			asset: AssetIdOf<T>,
+			lp_id: AssetIdOf<T>,
+			scaled_balance: AssetBalanceOf<T>,
+			current_supply_index: Rate,
 		) -> DispatchResult {
-			T::Fungibles::create(asset_id.clone(), Self::account_id(), true, One::one())?;
-			T::Fungibles::mint_into(asset_id.clone(), &who, asset_balance)?;
+			let supply_index = SupplyIndexStorage::<T>::get((who, asset));
+			let old_balance = T::Fungibles::balance(lp_id, who);
+
+			let interest_on_old_deposit = (current_supply_index
+				.checked_sub(&supply_index.supply_index)
+				.ok_or(Error::<T>::OverflowError)?)
+			.checked_mul(&FixedU128::from(old_balance.saturated_into::<u128>()))
+			.ok_or(Error::<T>::OverflowError)?;
+
+			let total_new_mint = scaled_balance
+				.checked_add(&interest_on_old_deposit.into_inner().saturated_into())
+				.ok_or(Error::<T>::OverflowError)?;
+			let updated_supply_index = SupplyIndex {
+				supply_index: current_supply_index,
+				last_accrued_interest_at: T::Time::now().saturated_into(),
+			};
+			SupplyIndexStorage::<T>::insert((who, asset), updated_supply_index);
+
+			T::Fungibles::mint_into(lp_id, who, total_new_mint)?;
 			Ok(())
 		}
 	}
