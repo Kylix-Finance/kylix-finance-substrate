@@ -577,9 +577,9 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers two events:
 		///
-		/// * `LendingPoolAdded(asset_a)` if a new lending pool was created.
-		/// * `DepositSupplied(asset_a, asset_b, amount_a, amount_b)` after the liquidity has been
-		///   successfully added.
+		/// * `LendingPoolAdded(who, asset_a)` if a new lending pool was created.
+		/// * `DepositSupplied(who, asset_a, amount_a)` after the liquidity has been successfully
+		///   added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
 		pub fn create_lending_pool(
@@ -924,14 +924,13 @@ pub mod pallet {
 
 			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
 			// mints the lp tokens into the users account
-			T::Fungibles::mint_into(id.clone(), &who, scaled_minted_tokens)?;
-			// Create suppliers supply_index
-			let supply_index = SupplyIndex::from(
+			Self::update_and_mint(
+				who,
+				asset,
+				id,
+				scaled_minted_tokens,
 				underlying_asset.supply_index()?,
-				underlying_asset.last_accrued_interest,
-			);
-			SupplyIndexStorage::<T>::insert((who, asset), supply_index);
-
+			)?;
 			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
 			Self::deposit_event(Event::LPTokenMinted {
@@ -989,6 +988,9 @@ pub mod pallet {
 			// let's ensure that the lending pool is active
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
 
+			pool.reserve_balance =
+				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
+
 			// Ok, now let's calculate the amount of LP tokens to mint
 			// pro quota based on the total supply and the total liquidity in the pool
 			// following the formula:
@@ -1018,9 +1020,6 @@ pub mod pallet {
 			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
 			let current_supply_index = underlying_asset.supply_index()?;
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
-
-			pool.reserve_balance =
-				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 
 			// let's update the balances of the pool now
 			LendingPoolStorage::<T>::set(&asset_pool, pool);
