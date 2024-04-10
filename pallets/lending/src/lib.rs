@@ -515,6 +515,7 @@ pub mod pallet {
 		LendingPoolDeactivated { who: T::AccountId, asset: AssetIdOf<T> },
 		LendingPoolRateModelUpdated { who: T::AccountId, asset: AssetIdOf<T> },
 		LendingPoolKinkUpdated { who: T::AccountId, asset: AssetIdOf<T> },
+		LPTokenMinted { who: T::AccountId, asset: AssetIdOf<T>, balance: AssetBalanceOf<T> },
 	}
 
 	// Errors inform users that something went wrong.
@@ -923,7 +924,7 @@ pub mod pallet {
 
 			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
 			// mints the lp tokens into the users account
-			T::Fungibles::mint_into(id, &who, scaled_minted_tokens)?;
+			T::Fungibles::mint_into(id.clone(), &who, scaled_minted_tokens)?;
 			// Create suppliers supply_index
 			let supply_index = SupplyIndex::from(
 				underlying_asset.supply_index()?,
@@ -933,6 +934,11 @@ pub mod pallet {
 
 			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
+			Self::deposit_event(Event::LPTokenMinted {
+				who: who.clone(),
+				asset: id,
+				balance: scaled_minted_tokens,
+			});
 			Ok(())
 		}
 
@@ -1174,6 +1180,11 @@ pub mod pallet {
 			SupplyIndexStorage::<T>::insert((who, asset), updated_supply_index);
 
 			T::Fungibles::mint_into(lp_id, who, total_new_mint)?;
+			Self::deposit_event(Event::LPTokenMinted {
+				who: who.clone(),
+				asset: lp_id,
+				balance: total_new_mint,
+			});
 			Ok(())
 		}
 	}
