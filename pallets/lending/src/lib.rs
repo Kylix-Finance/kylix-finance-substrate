@@ -59,6 +59,7 @@ pub type Timestamp = u64;
 pub type Rate = FixedU128;
 pub type Ratio = Permill;
 pub type LendingPoolId = u32;
+pub const SECONDS_PER_YEAR: u64 = 365u64 * 24 * 60 * 60;
 
 #[cfg(test)]
 mod mock;
@@ -433,6 +434,34 @@ pub mod pallet {
 				.saturated_into();
 			Ok(scaled_deposit)
 		}
+
+		/// Calculates linear interest as follows
+		/// 	rate_per_second = rate / SECONDS_PER_YEAR
+		/// 	duration = now - last_updated_timestamp
+		/// 	rate = 1 + rate_per_second * duration
+		/// # Arguments
+		/// rate: Annual supply interest rate
+		fn calculate_linear_interest(&self, rate: Rate) -> Result<Rate, Error<T>> {
+			let dur: u64 = Pallet::<T>::now_in_seconds()
+				.checked_sub(self.last_accrued_interest)
+				.ok_or(Error::<T>::OverflowError)?;
+			let new_rate = rate
+				.checked_mul(&FixedU128::from(dur as u128))
+				.ok_or(Error::<T>::OverflowError)?;
+			let accumulated_rate = new_rate
+				.checked_div(&(SECONDS_PER_YEAR as u128).into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_add(&FixedU128::one())
+				.ok_or(Error::<T>::OverflowError)?;
+			Ok(accumulated_rate)
+		}
+
+		// fn update_supply_index(&mut self, rate: Rate) Result<(), Error<T>>{
+		// 	let incr = self.calculate_linear_interest(rate)?;
+		// 	let new_index = self.supply_index.checked_mul(incr).ok_or(Error::<T>::OverflowError)?;
+		// 	self.supply_index = new_index;
+		// 	Ok(())
+		// }
 	}
 
 	//  The accrued supply_index of the supplier
