@@ -927,18 +927,6 @@ pub mod pallet {
 				reward_accrued: BalanceOf::<T>::zero(),
 			};
 
-			// Let's calculate the amount of LP tokens to mint
-			// pro quota based on the total supply following the formula:
-			//
-			// minted_tokens = deposit * total_issuance / total_liquidity
-
-			let total_issuance = T::Fungibles::total_issuance(asset.clone());
-			let minted_tokens = total_issuance
-				.checked_mul(&balance)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(&lending_pool.reserve_balance)
-				.ok_or(Error::<T>::OverflowError)?;
-
 			// let's transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
 				asset.clone(),
@@ -951,7 +939,7 @@ pub mod pallet {
 			// create liquidity token
 			T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 
-			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
+			let scaled_minted_tokens = underlying_asset.scaled_deposit(balance)?;
 			// mints the lp tokens into the users account
 			Self::update_and_mint(
 				who,
@@ -1020,19 +1008,6 @@ pub mod pallet {
 			pool.reserve_balance =
 				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 
-			// Ok, now let's calculate the amount of LP tokens to mint
-			// pro quota based on the total supply and the total liquidity in the pool
-			// following the formula:
-			//
-			// minted_tokens = deposit * total_issuance / total_liquidity
-
-			let total_issuance = T::Fungibles::total_issuance(asset.clone());
-			let minted_tokens = total_issuance
-				.checked_mul(&balance)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(&pool.reserve_balance)
-				.ok_or(Error::<T>::OverflowError)?;
-
 			// let's transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
 				asset.clone(),
@@ -1046,7 +1021,7 @@ pub mod pallet {
 			// TODO: update the the UnderlyingAsset data
 			// Update UnderlyingAssetStorage
 
-			let scaled_minted_tokens = underlying_asset.scaled_deposit(minted_tokens)?;
+			let scaled_minted_tokens = underlying_asset.scaled_deposit(balance)?;
 			let current_supply_index = underlying_asset.supply_index()?;
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
