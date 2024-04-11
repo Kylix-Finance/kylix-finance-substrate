@@ -248,8 +248,8 @@ pub mod pallet {
 			id: LendingPoolId,
 			lend_token_id: AssetIdOf<T>,
 			balance: AssetBalanceOf<T>,
-		) -> Self {
-			LendingPool {
+		) -> Result<Self, Error<T>> {
+			let mut pool = LendingPool {
 				id,
 				lend_token_id,
 
@@ -270,7 +270,9 @@ pub mod pallet {
 				last_accrued_interest_at: Pallet::<T>::now_in_seconds(),
 				borrow_index: Rate::one(),
 				supply_index: Rate::one(),
-			}
+			};
+			pool.update_supply_index()?;
+			Ok(pool)
 		}
 
 		///
@@ -413,7 +415,7 @@ pub mod pallet {
 			Ok(accumulated_rate)
 		}
 
-		fn update_supply_index(&mut self) -> DispatchResult {
+		fn update_supply_index(&mut self) -> Result<(), Error<T>> {
 			let incr = self.calculate_linear_interest()?;
 			let new_index =
 				self.supply_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
@@ -907,7 +909,7 @@ pub mod pallet {
 
 			// Now we can safely create and store our lending pool with an initial balance...
 			let asset_pool = AssetPool::from(asset);
-			let lending_pool = LendingPool::<T>::from(id, asset, balance);
+			let lending_pool = LendingPool::<T>::from(id, asset, balance)?;
 
 			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
 
