@@ -236,6 +236,11 @@ pub mod pallet {
 
 		pub borrow_rate: Ratio, // the borrow rate of the pool
 		pub supply_rate: Ratio, // the supply rate of the pool
+
+		pub last_accrued_interest_at: Timestamp, /* the timestamp of the last calculation of
+		                                          * accrued interest */
+		pub borrow_index: Rate, // accumulator of the total earned interest rate
+		pub supply_index: Rate, // accumulator of the total earned interest rate
 	}
 	impl<T: Config> LendingPool<T> {
 		// let's create a default reserve lending pool
@@ -262,6 +267,9 @@ pub mod pallet {
 
 				supply_rate: Ratio::zero(),
 				exchange_rate: Ratio::zero(),
+				last_accrued_interest_at: Pallet::<T>::now_in_seconds(),
+				borrow_index: Rate::one(),
+				supply_index: Rate::one(),
 			}
 		}
 
@@ -368,6 +376,50 @@ pub mod pallet {
 		pub fn is_active(&self) -> bool {
 			self.activated == true
 		}
+
+		/// Calculates scaled deposit as
+		/// scaled_deposit = deposit / supply_index
+		pub fn scaled_deposit(
+			&self,
+			deposit: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let scaled_deposit = FixedU128::from_inner(deposit.saturated_into())
+				.checked_div(&self.supply_index)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(scaled_deposit)
+		}
+
+		/// Calculates linear interest as follows
+		/// 	rate_per_second = rate / SECONDS_PER_YEAR
+		/// 	duration = now - last_updated_timestamp
+		/// 	rate = 1 + rate_per_second * duration
+		/// # Arguments
+		/// rate: Annual supply interest rate
+		fn calculate_linear_interest(&self) -> Result<Rate, Error<T>> {
+			let dur: u64 = Pallet::<T>::now_in_seconds()
+				.checked_sub(self.last_accrued_interest_at)
+				.ok_or(Error::<T>::OverflowError)?;
+			let rate_factor = self
+				.supply_interest_rate()?
+				.checked_mul(&FixedU128::from(dur as u128))
+				.ok_or(Error::<T>::OverflowError)?;
+			let accumulated_rate = rate_factor
+				.checked_div(&(SECONDS_PER_YEAR as u128).into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_add(&FixedU128::one())
+				.ok_or(Error::<T>::OverflowError)?;
+			Ok(accumulated_rate)
+		}
+
+		fn update_supply_index(&mut self) -> DispatchResult {
+			let incr = self.calculate_linear_interest()?;
+			let new_index =
+				self.supply_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
+			self.supply_index = new_index;
+			Ok(())
+		}
 	}
 
 	/// Kylix runtime storage items
@@ -414,54 +466,6 @@ pub mod pallet {
 		pub reward_supply_speed: AssetBalanceOf<T>, // the current reward supply speed
 		pub reward_borrow_speed: AssetBalanceOf<T>, // the current reward borrow speed
 		pub reward_accrued: AssetBalanceOf<T>,      // the current reward accrued
-	}
-
-	impl<T: Config> UnderlyingAsset<T> {
-		pub fn supply_index(&self) -> Result<Rate, Error<T>> {
-			// TODO: implement
-			Ok(Rate::one())
-		}
-		/// Calculates scaled deposit as
-		/// scaled_deposit = deposit / supply_index
-		pub fn scaled_deposit(
-			&self,
-			deposit: AssetBalanceOf<T>,
-		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let scaled_deposit = FixedU128::from_inner(deposit.saturated_into())
-				.checked_div(&self.supply_index()?)
-				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				.saturated_into();
-			Ok(scaled_deposit)
-		}
-
-		/// Calculates linear interest as follows
-		/// 	rate_per_second = rate / SECONDS_PER_YEAR
-		/// 	duration = now - last_updated_timestamp
-		/// 	rate = 1 + rate_per_second * duration
-		/// # Arguments
-		/// rate: Annual supply interest rate
-		fn calculate_linear_interest(&self, rate: Rate) -> Result<Rate, Error<T>> {
-			let dur: u64 = Pallet::<T>::now_in_seconds()
-				.checked_sub(self.last_accrued_interest)
-				.ok_or(Error::<T>::OverflowError)?;
-			let new_rate = rate
-				.checked_mul(&FixedU128::from(dur as u128))
-				.ok_or(Error::<T>::OverflowError)?;
-			let accumulated_rate = new_rate
-				.checked_div(&(SECONDS_PER_YEAR as u128).into())
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_add(&FixedU128::one())
-				.ok_or(Error::<T>::OverflowError)?;
-			Ok(accumulated_rate)
-		}
-
-		// fn update_supply_index(&mut self, rate: Rate) Result<(), Error<T>>{
-		// 	let incr = self.calculate_linear_interest(rate)?;
-		// 	let new_index = self.supply_index.checked_mul(incr).ok_or(Error::<T>::OverflowError)?;
-		// 	self.supply_index = new_index;
-		// 	Ok(())
-		// }
 	}
 
 	//  The accrued supply_index of the supplier
@@ -939,15 +943,9 @@ pub mod pallet {
 			// create liquidity token
 			T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 
-			let scaled_minted_tokens = underlying_asset.scaled_deposit(balance)?;
+			let scaled_minted_tokens = lending_pool.scaled_deposit(balance)?;
 			// mints the lp tokens into the users account
-			Self::update_and_mint(
-				who,
-				asset,
-				id,
-				scaled_minted_tokens,
-				underlying_asset.supply_index()?,
-			)?;
+			Self::update_and_mint(who, asset, id, scaled_minted_tokens, lending_pool.supply_index)?;
 			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
 			Self::deposit_event(Event::LPTokenMinted {
@@ -1007,6 +1005,8 @@ pub mod pallet {
 
 			pool.reserve_balance =
 				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
+			// Update pool supply index
+			pool.update_supply_index()?;
 
 			// let's transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
@@ -1016,13 +1016,9 @@ pub mod pallet {
 				balance,
 				Preservation::Expendable,
 			)?;
-			let underlying_asset = UnderlyingAssetStorage::<T>::get(asset);
 
-			// TODO: update the the UnderlyingAsset data
-			// Update UnderlyingAssetStorage
-
-			let scaled_minted_tokens = underlying_asset.scaled_deposit(balance)?;
-			let current_supply_index = underlying_asset.supply_index()?;
+			let scaled_minted_tokens = pool.scaled_deposit(balance)?;
+			let current_supply_index = pool.supply_index;
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
 			// let's update the balances of the pool now
