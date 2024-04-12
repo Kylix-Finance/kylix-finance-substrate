@@ -86,7 +86,7 @@ pub mod pallet {
 			fungibles::{
 				Create, Inspect, Mutate, {self},
 			},
-			tokens::Preservation,
+			tokens::{Fortitude, Precision, Preservation},
 		},
 		DefaultNoBound, PalletId,
 	};
@@ -421,6 +421,20 @@ pub mod pallet {
 				self.supply_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
 			self.supply_index = new_index;
 			Ok(())
+		}
+
+		/// Calculates accrued deposit as
+		/// accrued_deposit = deposit * supply_index
+		pub fn accrued_deposit(
+			&self,
+			balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let a_deposit = FixedU128::from_inner(balance.saturated_into())
+				.checked_mul(&self.supply_index)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(a_deposit)
 		}
 	}
 
@@ -1005,10 +1019,10 @@ pub mod pallet {
 			// let's ensure that the lending pool is active
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
 
-			pool.reserve_balance =
-				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 			// Update pool supply index
 			pool.update_supply_index()?;
+			pool.reserve_balance =
+				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 
 			// let's transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
@@ -1052,26 +1066,36 @@ pub mod pallet {
 			// let's check the if the pool has enough liquidity
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
+			// Update pool's supply index
+			pool.update_supply_index()?;
+			// TODO: udpate pool's borrow index
+
 			// let's check if the user is actually elegible to withdraw!
-			let lp_tokens = T::Fungibles::balance(pool.id.clone(), &who);
-			ensure!(lp_tokens >= balance, Error::<T>::NotEnoughElegibleLiquidityToWithdraw);
+			let scaled_lp_tokens = T::Fungibles::balance(pool.id.clone(), &who);
+			let eligible_lp_tokens = pool.accrued_deposit(scaled_lp_tokens)?;
+			ensure!(
+				eligible_lp_tokens >= balance,
+				Error::<T>::NotEnoughElegibleLiquidityToWithdraw
+			);
 
-			// Get the current reserves
-			/*let reserve_user = T::Fungibles::balance(asset.clone(), &Self::account_id());
+			// Transfer the asset to the user
+			T::Fungibles::transfer(
+				asset.clone(),
+				&Self::account_id(),
+				who,
+				balance,
+				Preservation::Preserve,
+			)?;
 
-			// Calculate the
-			let total_issuance = T::Fungibles::total_issuance(pool.id.clone());
-
-			// Adjusted liquidity calculation
-			let interest = pool.interest_rate_model()
-				.mul_ceil(pool.borrowed_balance);
-			*/
-			//	let l_adj = self.total_deposits
-			//		.checked_add(&interest)?;
-
-			//	let share = Perbill::from_rational(amount_lp_tokens_burn,
-			// self.total_supply_lp_tokens); 	let tokens_to_return = share.mul_ceil(l_adj);
-
+			// burn the LP asset
+			let burnable_amount = pool.scaled_deposit(balance)?;
+			T::Fungibles::burn_from(
+				pool.id,
+				who,
+				burnable_amount,
+				Precision::Exact,
+				Fortitude::Force,
+			)?;
 			pool.reserve_balance =
 				pool.reserve_balance.checked_sub(&balance).ok_or(Error::<T>::OverflowError)?;
 
