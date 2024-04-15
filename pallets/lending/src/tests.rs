@@ -25,7 +25,7 @@ const LENDING_POOL_ID: LendingPoolId = 0;
 
 // Test helper for creating an account and minting a specific token
 fn setup_test_account(token: Token, address: u64, amount: BalanceAmount) {
-	let _ = TemplateModule::create_and_mint(token, ALICE, amount);
+	let _ = TemplateModule::update_and_mint(&ALICE, token, LENDING_POOL_ID, balance(token, ALICE), sp_runtime::FixedU128::from(1));
 	let res = balance(token, address);
 	assert_eq!(res, amount);
 }
@@ -46,7 +46,7 @@ fn it_works_for_default_value() {
 
 #[test]
 fn test_the_default_utilisation_rate() {
-	let pool: LendingPool<Test> = LendingPool::from(0, DOT, 10000);
+	let pool: LendingPool<Test> = LendingPool::from(0, DOT, 10000).expect("failed");
 
 	assert_eq!(pool.reserve_balance, 10000);
 	assert_eq!(pool.borrowed_balance, 0);
@@ -62,7 +62,7 @@ fn test_the_default_utilisation_rate() {
 
 #[test]
 fn test_utilisation_rate_with_some_supply_and_borrowing() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000);
+	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
 	pool.borrowed_balance = 5000;
 
 	println!("Test Pool1: {:#?}", pool);
@@ -79,7 +79,7 @@ fn test_utilisation_rate_with_some_supply_and_borrowing() {
 
 #[test]
 fn test_utilisation_rate_with_some_supply_and_borrowing2() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000);
+	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
 	pool.borrowed_balance = 9000;
 
 	let ut = pool.utilisation_ratio().unwrap();
@@ -88,7 +88,7 @@ fn test_utilisation_rate_with_some_supply_and_borrowing2() {
 
 #[test]
 fn test_supply_rate() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000);
+	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
 	pool.borrowed_balance = 5000;
 
 	println!("Test Reserve Factor: {:#?}", pool.reserve_factor);
@@ -102,7 +102,7 @@ fn test_supply_rate() {
 
 #[test]
 fn test_supply_rate2() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000);
+	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
 	pool.borrowed_balance = 9000;
 
 	let ut = pool.supply_interest_rate().unwrap();
