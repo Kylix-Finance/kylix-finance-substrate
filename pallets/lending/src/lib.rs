@@ -271,7 +271,7 @@ pub mod pallet {
 				borrow_index: Rate::one(),
 				supply_index: Rate::one(),
 			};
-			pool.update_supply_index()?;
+			pool.update_indexes()?;
 			Ok(pool)
 		}
 
@@ -420,6 +420,18 @@ pub mod pallet {
 			let new_index =
 				self.supply_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
 			self.supply_index = new_index;
+			Ok(())
+		}
+
+		fn udpate_borrow_index(&mut self) -> Result<(), Error<T>> {
+			todo!();
+		}
+
+		fn update_indexes(&mut self) -> Result<(), Error<T>> {
+			if self.last_accrued_interest_at < Pallet::<T>::now_in_seconds() {
+				self.update_supply_index()?;
+				self.udpate_borrow_index()?;
+			}
 			Ok(())
 		}
 
@@ -1020,7 +1032,7 @@ pub mod pallet {
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
 
 			// Update pool supply index
-			pool.update_supply_index()?;
+			pool.update_indexes()?;
 			pool.reserve_balance =
 				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 
@@ -1067,7 +1079,7 @@ pub mod pallet {
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
 			// Update pool's supply index
-			pool.update_supply_index()?;
+			pool.update_indexes()?;
 			// TODO: udpate pool's borrow index
 
 			// let's check if the user is actually elegible to withdraw!
