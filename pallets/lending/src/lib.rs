@@ -379,18 +379,18 @@ pub mod pallet {
 			self.activated == true
 		}
 
-		/// Calculates scaled deposit as
-		/// scaled_deposit = deposit / supply_index
-		pub fn scaled_deposit(
+		/// Calculates scaled balance as
+		/// scaled_balance = balance / supply_index
+		pub fn scaled_balance(
 			&self,
 			deposit: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let scaled_deposit = FixedU128::from_inner(deposit.saturated_into())
+			let scaled_balance = FixedU128::from_inner(deposit.saturated_into())
 				.checked_div(&self.supply_index)
 				.ok_or(Error::<T>::OverflowError)?
 				.into_inner()
 				.saturated_into();
-			Ok(scaled_deposit)
+			Ok(scaled_balance)
 		}
 
 		/// Calculates linear interest as follows
@@ -939,26 +939,6 @@ pub mod pallet {
 
 			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
 
-			// ...and save the information related to the underlying asset.
-			//
-			// TODO: It is not convenient to instantiate a Default here that anyway needs to be
-			// updated at a later point. We should instead have a way to define the properties of
-			// the underlying asset from outside.
-			let underlying_asset = UnderlyingAsset::<T> {
-				underlying_asset_id: asset,
-				last_accrued_interest: Self::now_in_seconds(),
-				total_borrowed: BalanceOf::<T>::zero(),
-				total_supply: BalanceOf::<T>::zero(),
-				borrow_index: Rate::one(),
-				exchange_rate: Rate::one(),
-				borrow_rate: Rate::one(),
-				supply_rate: Rate::one(),
-				utilization_rate: Rate::one(),
-				reward_supply_speed: BalanceOf::<T>::zero(),
-				reward_borrow_speed: BalanceOf::<T>::zero(),
-				reward_accrued: BalanceOf::<T>::zero(),
-			};
-
 			// let's transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
 				asset.clone(),
@@ -971,10 +951,9 @@ pub mod pallet {
 			// create liquidity token
 			T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 
-			let scaled_minted_tokens = lending_pool.scaled_deposit(balance)?;
+			let scaled_minted_tokens = lending_pool.scaled_balance(balance)?;
 			// mints the lp tokens into the users account
 			Self::update_and_mint(who, asset, id, scaled_minted_tokens, lending_pool.supply_index)?;
-			UnderlyingAssetStorage::<T>::insert(lending_pool.lend_token_id, underlying_asset);
 
 			Self::deposit_event(Event::LPTokenMinted {
 				who: who.clone(),
@@ -1045,7 +1024,7 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			let scaled_minted_tokens = pool.scaled_deposit(balance)?;
+			let scaled_minted_tokens = pool.scaled_balance(balance)?;
 			let current_supply_index = pool.supply_index;
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
@@ -1100,7 +1079,7 @@ pub mod pallet {
 			)?;
 
 			// burn the LP asset
-			let burnable_amount = pool.scaled_deposit(balance)?;
+			let burnable_amount = pool.scaled_balance(balance)?;
 			T::Fungibles::burn_from(
 				pool.id,
 				who,
