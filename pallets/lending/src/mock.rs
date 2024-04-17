@@ -68,7 +68,6 @@ impl pallet_balances::Config for Test {
 	type MaxFreezes = ConstU32<10>;
 }
 
-//TODO BRING TIMESTAMP PROPERLY FROM PALLET_TIMESTAMP; CHECK POLKADOT SDK
 impl pallet_timestamp::Config for Test {
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -105,10 +104,10 @@ parameter_types! {
 
 impl pallet_template::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
 	#[doc = r" Type to access the Balances Pallet."]
 	type NativeBalance = Balances;
 	type WeightInfo = ();
-    type Time = Timestamp;
 	#[doc = r" Type to access the Assets Pallet."]
 	type Fungibles = Assets;
 	type PalletId = KylixPalletId;
