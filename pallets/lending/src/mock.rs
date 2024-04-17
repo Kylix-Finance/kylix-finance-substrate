@@ -22,6 +22,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		Assets: pallet_assets,
 		TemplateModule: pallet_template,
+		Timestamp: pallet_timestamp,
 	}
 );
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
@@ -67,6 +68,14 @@ impl pallet_balances::Config for Test {
 	type MaxFreezes = ConstU32<10>;
 }
 
+//TODO BRING TIMESTAMP PROPERLY FROM PALLET_TIMESTAMP; CHECK POLKADOT SDK
+impl pallet_timestamp::Config for Test {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ConstU64<1>;
+	type WeightInfo = ();
+}
+
 impl pallet_assets::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
@@ -99,7 +108,7 @@ impl pallet_template::Config for Test {
 	#[doc = r" Type to access the Balances Pallet."]
 	type NativeBalance = Balances;
 	type WeightInfo = ();
-
+    type Time = Timestamp;
 	#[doc = r" Type to access the Assets Pallet."]
 	type Fungibles = Assets;
 	type PalletId = KylixPalletId;

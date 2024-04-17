@@ -24,6 +24,7 @@ const DOT: Token = 1u32;
 const LENDING_POOL_ID: LendingPoolId = 0;
 
 // Test helper for creating an account and minting a specific token
+//scaled balance use scaled_deposit fn
 fn setup_test_account(token: Token, address: u64, amount: BalanceAmount) {
 	let _ = TemplateModule::update_and_mint(&ALICE, token, LENDING_POOL_ID, balance(token, ALICE), sp_runtime::FixedU128::from(1));
 	let res = balance(token, address);
