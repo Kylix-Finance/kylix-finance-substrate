@@ -393,6 +393,21 @@ pub mod pallet {
 			Ok(scaled_balance)
 		}
 
+		/// Calculates current balance as
+		/// equivalent_balance = balance * supply_index
+		/// equivalent_balance takes accrued interest on deposits into accout.
+		pub fn equivalent_balance(
+			&self,
+			stored_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let equivalent_balance = FixedU128::from_inner(stored_balance.saturated_into())
+				.checked_mul(&self.supply_index)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(equivalent_balance)
+		}
+
 		/// Calculates linear interest as follows
 		/// 	rate_per_second = rate / SECONDS_PER_YEAR
 		/// 	duration = now - last_updated_timestamp
