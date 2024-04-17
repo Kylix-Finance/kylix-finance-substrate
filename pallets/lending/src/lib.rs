@@ -415,6 +415,56 @@ pub mod pallet {
 			Ok(accumulated_rate)
 		}
 
+		/// Calculate compounded interest
+		/// Borrow interest compounds every second. This is achieved by an approximation of binomial
+		/// expansion to the third term.
+		/// BinomalExpansion:(1+x)^n = 1+ nx + (n/2)(n−1)*x^2 + (n/6)(n−1)(n−2)x^3 +...
+		/// Where n = t, number of periods and x = r, rate per second
+		/// Interest:(1+r) t ≈1 + rt + t/2 * (t−1) * r^2 + (t/6) * (t−1) * (t−2) * r^3
+		fn calculate_compunded_interest(&self) -> Result<Rate, Error<T>> {
+			let rate = self
+				.borrow_interest_rate()?
+				.checked_div(&(SECONDS_PER_YEAR as u128).into())
+				.ok_or(Error::<T>::OverflowError)?;
+			let t = Pallet::<T>::now_in_seconds()
+				.checked_sub(self.last_accrued_interest_at)
+				.ok_or(Error::<T>::OverflowError)?;
+			let t_minus_one = t.checked_sub(1u64).ok_or(Error::<T>::OverflowError)?;
+			let t_minus_two = t.checked_sub(2u64).ok_or(Error::<T>::OverflowError)?;
+			let rate_square = rate.checked_mul(&rate).ok_or(Error::<T>::OverflowError)?;
+			let rate_cube = rate_square.checked_mul(&rate).ok_or(Error::<T>::OverflowError)?;
+
+			let first_term =
+				rate.checked_mul(&(t as u128).into()).ok_or(Error::<T>::OverflowError)?;
+
+			let second_term = FixedU128::from(t as u128)
+				.checked_mul(&(t_minus_one as u128).into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(&rate_square)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_div(&(2u128).into())
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let third_term = FixedU128::from(t as u128)
+				.checked_mul(&(t_minus_one as u128).into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(&(t_minus_two as u128).into())
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(&rate_cube)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_div(&(6u128).into())
+				.ok_or(Error::<T>::OverflowError)?;
+			let interest = FixedU128::one()
+				.checked_add(&first_term)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_add(&second_term)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_add(&third_term)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			Ok(interest)
+		}
+
 		fn update_supply_index(&mut self) -> Result<(), Error<T>> {
 			let incr = self.calculate_linear_interest()?;
 			let new_index =
@@ -424,7 +474,11 @@ pub mod pallet {
 		}
 
 		fn udpate_borrow_index(&mut self) -> Result<(), Error<T>> {
-			todo!();
+			let incr = self.calculate_compunded_interest()?;
+			let new_index =
+				self.borrow_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
+			self.borrow_index = new_index;
+			Ok(())
 		}
 
 		fn update_indexes(&mut self) -> Result<(), Error<T>> {
