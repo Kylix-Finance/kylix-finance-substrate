@@ -34,12 +34,26 @@
 /// 4. implement the `WeightInfo` trait for the pallet
 ///
 ///! Use case
-use frame_support::{
+pub use frame_support::{
 	pallet_prelude::*,
 	sp_runtime::{FixedU128, Permill, SaturatedConversion},
 	traits::{fungible, fungibles},
 };
+pub use frame_support::{
+	sp_runtime,
+	sp_runtime::traits::{
+		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero,
+	},
+	traits::{
+		fungibles::{Create, Inspect, Mutate},
+		tokens::{Fortitude, Precision, Preservation},
+		Time as MomentTime,
+	},
+	DefaultNoBound, PalletId,
+};
+pub use frame_system::pallet_prelude::*;
 pub use pallet::*;
+pub use sp_runtime::FixedPointNumber;
 
 /// Account Type Definition
 pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -61,6 +75,9 @@ pub type Ratio = Permill;
 pub type LendingPoolId = u32;
 pub const SECONDS_PER_YEAR: u64 = 365u64 * 24 * 60 * 60;
 
+mod borrow_repay;
+use borrow_repay::UserBorrow;
+
 #[cfg(test)]
 mod mock;
 
@@ -75,23 +92,6 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	pub use frame_support::traits::Time as MomentTime;
-	use frame_support::{
-		sp_runtime,
-		sp_runtime::traits::{
-			AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero,
-		},
-		traits::{
-			fungible::{self},
-			fungibles::{
-				Create, Inspect, Mutate, {self},
-			},
-			tokens::{Fortitude, Precision, Preservation},
-		},
-		DefaultNoBound, PalletId,
-	};
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::FixedPointNumber;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -517,6 +517,30 @@ pub mod pallet {
 				.saturated_into();
 			Ok(a_deposit)
 		}
+
+		/// Update pool: move assets from reserved_balance to borrowed_balance
+		pub fn move_asset_on_borrow(&mut self, balance: AssetBalanceOf<T>) -> Result<(), Error<T>> {
+			self.reserve_balance =
+				self.reserve_balance.checked_sub(&balance).ok_or(Error::<T>::OverflowError)?;
+			self.borrowed_balance =
+				self.borrowed_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
+			Ok(())
+		}
+
+		/// Calculate the loan amount
+		/// max_loan_amount = collateral_balance * collatoral_factor
+		pub fn max_borrow_amount(
+			&self,
+			collateral_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let factor: Rate = self.collateral_factor.into();
+			let max_loan_amount = FixedU128::from_inner(collateral_balance.saturated_into())
+				.checked_mul(&factor)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(max_loan_amount)
+		}
 	}
 
 	/// Kylix runtime storage items
@@ -611,6 +635,12 @@ pub mod pallet {
 	pub type SupplyIndexStorage<T: Config> =
 		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>), SupplyIndex, ValueQuery>;
 
+	/// The borrow status of accounts
+	/// (AccountId, corrowed_asset_id, collateral_asset_id) => UserBorrow details
+	#[pallet::storage]
+	pub type Borrows<T: Config> =
+		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>, AssetIdOf<T>), UserBorrow<T>>;
+
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
@@ -675,6 +705,8 @@ pub mod pallet {
 		OverflowError,
 		/// The ID already exists
 		IdAlreadyExists,
+		/// The user has not enough collateral assets
+		NotEnoughCollateral,
 	}
 
 	#[pallet::call]
@@ -865,10 +897,12 @@ pub mod pallet {
 		pub fn borrow(
 			origin: OriginFor<T>,
 			asset: AssetIdOf<T>,
-			balance: BalanceOf<T>,
+			balance: AssetBalanceOf<T>,
+			collateral_asset: AssetIdOf<T>,
+			collateral_balance: AssetBalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_borrow(&who, asset, balance)?;
+			Self::do_borrow(&who, asset, balance, collateral_asset, collateral_balance)?;
 			Self::deposit_event(Event::DepositBorrowed { who, balance });
 			Ok(())
 		}
@@ -1126,9 +1160,8 @@ pub mod pallet {
 			// let's check the if the pool has enough liquidity
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
-			// Update pool's supply index
+			// Update pool's indexes
 			pool.update_indexes()?;
-			// TODO: udpate pool's borrow index
 
 			// let's check if the user is actually elegible to withdraw!
 			let scaled_lp_tokens = T::Fungibles::balance(pool.id.clone(), &who);
@@ -1167,12 +1200,29 @@ pub mod pallet {
 
 		///
 		fn do_borrow(
-			_who: &T::AccountId,
+			who: &T::AccountId,
 			asset: AssetIdOf<T>,
-			balance: BalanceOf<T>,
+			balance: AssetBalanceOf<T>,
+			collateral_asset: AssetIdOf<T>,
+			collateral_balance: AssetBalanceOf<T>,
 		) -> DispatchResult {
 			// First, let's check the balance amount to supply is valid
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquidityWithdrawal);
+			ensure!(
+				collateral_balance > AssetBalanceOf::<T>::zero(),
+				Error::<T>::InvalidLiquidityWithdrawal
+			);
+
+			let user_collateral_balance = T::Fungibles::reducible_balance(
+				collateral_asset,
+				who,
+				Preservation::Preserve,
+				Fortitude::Polite,
+			);
+			ensure!(
+				user_collateral_balance >= collateral_balance,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
 
 			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
@@ -1182,11 +1232,68 @@ pub mod pallet {
 			);
 
 			// let's check if the pool is active
-			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
+			let mut pool = LendingPoolStorage::<T>::get(asset_pool.clone());
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
 
 			// let's check the if the pool has enough liquidity
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
+
+			// Update pool's indexex
+			pool.update_indexes()?;
+
+			// check sufficiency of collateral asset
+			// get collateral asset value in terms of borrow-asset
+			let equivalent_asset_balace =
+				Self::get_equivalent_asset_amount(who, asset, collateral_asset, collateral_balance);
+			// get elligible borrow quantity based on reserve_factor
+			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balace)?;
+			// error if borrow is more than eligibility
+			ensure!(eligible_asset_amount >= balance, Error::<T>::NotEnoughCollateral);
+
+			let borrow: UserBorrow<T> = UserBorrow {
+				borrowed_asset: asset,
+				borrowed_balance: balance,
+				collateral_asset,
+				collateral_balance,
+			};
+
+			Borrows::<T>::try_mutate(
+				(who, asset, collateral_asset),
+				|maybe_borrow| -> DispatchResult {
+					if let Some(borrow_record) = maybe_borrow {
+						// Update the existing record.
+						borrow_record.increase_borrow(&borrow)?;
+					} else {
+						// The entry does not exist, so we assign `Some(borrow)` to it to store the
+						// new value
+						*maybe_borrow = Some(borrow);
+					}
+					Ok(())
+				},
+			)?;
+
+			// Update pool: transfer asset from reserved_balance to borrowed_balance
+			pool.move_asset_on_borrow(balance)?;
+
+			LendingPoolStorage::<T>::set(&asset_pool, pool);
+
+			// Transfer the asset to the user
+			T::Fungibles::transfer(
+				asset.clone(),
+				&Self::account_id(),
+				who,
+				balance,
+				Preservation::Preserve,
+			)?;
+
+			// Transfer the collateral to the pallet
+			T::Fungibles::transfer(
+				collateral_asset.clone(),
+				who,
+				&Self::account_id(),
+				collateral_balance,
+				Preservation::Preserve,
+			)?;
 
 			Ok(())
 		}
@@ -1278,6 +1385,15 @@ pub mod pallet {
 			core::time::Duration::from_millis(T::Time::now().saturated_into::<u64>())
 				.as_secs()
 				.saturated_into::<u64>()
+		}
+
+		fn get_equivalent_asset_amount(
+			_who: &T::AccountId,
+			_asset: AssetIdOf<T>,
+			_collateral_asset: AssetIdOf<T>,
+			_collateral_balance: AssetBalanceOf<T>,
+		) -> AssetBalanceOf<T> {
+			todo!()
 		}
 	}
 }
