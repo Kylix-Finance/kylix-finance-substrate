@@ -47,67 +47,78 @@ fn it_works_for_default_value() {
 
 #[test]
 fn test_the_default_utilisation_rate() {
-	let pool: LendingPool<Test> = LendingPool::from(0, DOT, 10000).expect("failed");
+	new_test_ext().execute_with(|| {
+		let pool: LendingPool<Test> = LendingPool::from(0, DOT, 10000).expect("failed");
 
-	assert_eq!(pool.reserve_balance, 10000);
-	assert_eq!(pool.borrowed_balance, 0);
-	assert_eq!(pool.is_active(), false);
-	assert_eq!(pool.is_empty(), false);
-
-	let ut = pool.utilisation_ratio().unwrap();
-	assert_eq!(ut, Permill::zero());
-
-	let br = pool.borrow_interest_rate().unwrap();
-	assert_eq!(br, Rate::from_float(0.0));
+		assert_eq!(pool.reserve_balance, 10000);
+		assert_eq!(pool.borrowed_balance, 0);
+		assert_eq!(pool.is_active(), false);
+		assert_eq!(pool.is_empty(), false);
+	
+		let ut = pool.utilisation_ratio().unwrap();
+		assert_eq!(ut, Permill::zero());
+	
+		let br = pool.borrow_interest_rate().unwrap();
+		assert_eq!(br, Rate::from_float(0.0));
+	});
 }
 
 #[test]
 fn test_utilisation_rate_with_some_supply_and_borrowing() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
-	pool.borrowed_balance = 5000;
-
-	println!("Test Pool1: {:#?}", pool);
-
-	let ut = pool.utilisation_ratio().unwrap();
-	assert_eq!(ut, Permill::from_percent(50)); // 5000/10000 = 50%
-
-	let br = pool.borrow_interest_rate().unwrap();
-	assert_eq!(br, Rate::from_float(0.045)); // 4.5%
-
-	// 4.5% borrow interest rate for 50% utilisation rate.
-	// it can be aslso verified visually from https://www.desmos.com/calculator/fnj0ctpqn9
+	new_test_ext().execute_with(|| {
+		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
+		pool.borrowed_balance = 5000;
+	
+		println!("Test Pool1: {:#?}", pool);
+	
+		let ut = pool.utilisation_ratio().unwrap();
+		assert_eq!(ut, Permill::from_percent(50)); // 5000/10000 = 50%
+	
+		let br = pool.borrow_interest_rate().unwrap();
+		assert_eq!(br, Rate::from_float(0.045)); // 4.5%
+	
+		// 4.5% borrow interest rate for 50% utilisation rate.
+		// it can be aslso verified visually from https://www.desmos.com/calculator/fnj0ctpqn9
+	 
+	});
 }
 
 #[test]
 fn test_utilisation_rate_with_some_supply_and_borrowing2() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
-	pool.borrowed_balance = 9000;
-
-	let ut = pool.utilisation_ratio().unwrap();
-	assert_eq!(ut, Permill::from_percent(90));
+	new_test_ext().execute_with(|| {
+		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
+		pool.borrowed_balance = 9000;
+	
+		let ut = pool.utilisation_ratio().unwrap();
+		assert_eq!(ut, Permill::from_percent(90));
+	});
 }
 
 #[test]
 fn test_supply_rate() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
-	pool.borrowed_balance = 5000;
+	new_test_ext().execute_with(|| {
+		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
+		pool.borrowed_balance = 5000;
 
-	println!("Test Reserve Factor: {:#?}", pool.reserve_factor);
-	let reserved = Permill::from_percent(100) - (pool.reserve_factor);
+		println!("Test Reserve Factor: {:#?}", pool.reserve_factor);
+		let reserved = Permill::from_percent(100) - (pool.reserve_factor);
 
-	println!("Test Reserved: {:#?}", reserved);
+		println!("Test Reserved: {:#?}", reserved);
 
-	let ut = pool.supply_interest_rate().unwrap();
-	assert_eq!(ut, Rate::from_float(0.02025)); // 20.25%
+		let ut = pool.supply_interest_rate().unwrap();
+		assert_eq!(ut, Rate::from_float(0.02025)); // 20.25%
+	});
 }
 
 #[test]
 fn test_supply_rate2() {
-	let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
-	pool.borrowed_balance = 9000;
-
-	let ut = pool.supply_interest_rate().unwrap();
-	assert_eq!(ut, Rate::from_float(0.018225)); // 18.225%
+	new_test_ext().execute_with(|| {
+		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
+		pool.borrowed_balance = 9000;
+	
+		let ut = pool.supply_interest_rate().unwrap();
+		assert_eq!(ut, Rate::from_float(0.018225)); // 18.225%
+	});
 }
 
 #[test]
