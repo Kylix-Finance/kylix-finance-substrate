@@ -1404,7 +1404,8 @@ pub mod pallet {
 						loan.collateral_balance,
 					)?;
 				// repay the borrow
-				loan.repay_partial(pay, release_collateral_amount)?;
+				let scaled_pay = pool.scaled_borrow_balance(pay)?;
+				loan.repay_partial(scaled_pay, release_collateral_amount)?;
 				Borrows::<T>::set((who, asset, collateral_asset), Some(loan));
 				// release partial collateral
 				T::Fungibles::transfer(
