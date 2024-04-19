@@ -663,6 +663,13 @@ pub mod pallet {
 	pub type Borrows<T: Config> =
 		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>, AssetIdOf<T>), UserBorrow<T>>;
 
+	/// The storage to hold prices of assets w.r.t. other other assets
+	/// This is the dummy storage, ideally this functionality would be implemented in a dedicatd
+	/// pallet sotres (asset_id1, asset_id2) => FixedU128
+	#[pallet::storage]
+	pub type AssetPrices<T: Config> =
+		StorageMap<_, Blake2_128Concat, (AssetIdOf<T>, AssetIdOf<T>), FixedU128, OptionQuery>;
+
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
 	pub struct GenesisConfig<T: Config> {
@@ -698,6 +705,7 @@ pub mod pallet {
 		LendingPoolRateModelUpdated { who: T::AccountId, asset: AssetIdOf<T> },
 		LendingPoolKinkUpdated { who: T::AccountId, asset: AssetIdOf<T> },
 		LPTokenMinted { who: T::AccountId, asset: AssetIdOf<T>, balance: AssetBalanceOf<T> },
+		AssetPriceAdded { asset_1: AssetIdOf<T>, asset_2: AssetIdOf<T>, price: FixedU128 },
 	}
 
 	// Errors inform users that something went wrong.
@@ -731,6 +739,8 @@ pub mod pallet {
 		NotEnoughCollateral,
 		/// The Loan being repayed does not exists
 		LoanDoesNotExists,
+		/// Price of the asset can not be zero
+		InvalidAssetPrice,
 	}
 
 	#[pallet::call]
@@ -1029,6 +1039,48 @@ pub mod pallet {
 		pub fn update_pool_kink(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::LendingPoolKinkUpdated { who, asset });
+			Ok(())
+		}
+
+		/// Sets the price of one asset in terms of another asset.
+		///
+		/// The `set_asset_price` extrinsic allows a user to specify the relative price of one asset
+		/// (`asset_1`) in terms of another asset (`asset_2`).
+		///
+		/// # Parameters
+		/// - `origin`: The transaction origin. This must be a signed extrinsic.
+		/// - `asset_1`: The identifier for the first asset. This is the asset whose price is being
+		///   set.
+		/// - `asset_2`: The identifier for the second asset. This is the asset relative to which
+		///   the price is measured.
+		/// - `price`: The price of `asset_1` in terms of `asset_2`. This must be a non-zero value
+		///   to avoid errors.
+		///
+		/// # Emits
+		/// - `AssetPriceAdded`: This event is emitted after the price is successfully set. It
+		///   contains the asset identifiers and the new price.
+		///
+		/// # Errors
+		/// - `InvalidAssetPrice`: This error is thrown if the `price` parameter is zero.
+		///
+		/// # Note this should be moved to a new pallet `prices`
+		#[pallet::call_index(10)]
+		#[pallet::weight(Weight::default())]
+		pub fn set_asset_price(
+			origin: OriginFor<T>,
+			asset_1: AssetIdOf<T>,
+			asset_2: AssetIdOf<T>,
+			price: FixedU128,
+		) -> DispatchResult {
+			let _who = ensure_signed(origin)?;
+			// price should not be zero
+			ensure!(price > FixedU128::zero(), Error::<T>::InvalidAssetPrice);
+
+			AssetPrices::<T>::set((asset_1, asset_2), Some(price));
+
+			// Emit an event.
+			Self::deposit_event(Event::AssetPriceAdded { asset_1, asset_2, price });
+
 			Ok(())
 		}
 	}
