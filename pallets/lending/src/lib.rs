@@ -541,6 +541,15 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update pool: move assets from borrowed_balance reserved_balance on repayment
+		pub fn move_asset_on_repay(&mut self, balance: AssetBalanceOf<T>) -> Result<(), Error<T>> {
+			self.borrowed_balance =
+				self.borrowed_balance.checked_sub(&balance).ok_or(Error::<T>::OverflowError)?;
+			self.reserve_balance =
+				self.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
+			Ok(())
+		}
+
 		/// Calculate the loan amount
 		/// max_loan_amount = collateral_balance * collatoral_factor
 		pub fn max_borrow_amount(
@@ -554,6 +563,20 @@ pub mod pallet {
 				.into_inner()
 				.saturated_into();
 			Ok(max_loan_amount)
+		}
+
+		/// Calculate the repayable amount including borrow interests
+		/// _amount = borrow_balance * borrow_index
+		pub fn repayable_amount(
+			&self,
+			borrow_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let r = FixedU128::from_inner(borrow_balance.saturated_into())
+				.checked_mul(&self.borrow_index)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(r)
 		}
 	}
 
@@ -721,6 +744,8 @@ pub mod pallet {
 		IdAlreadyExists,
 		/// The user has not enough collateral assets
 		NotEnoughCollateral,
+		/// The Loan being repayed does not exists
+		LoanDoesNotExists,
 	}
 
 	#[pallet::call]
@@ -954,9 +979,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			asset: AssetIdOf<T>,
 			balance: BalanceOf<T>,
+			collateral_asset: AssetIdOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_repay(&who, asset, balance)?;
+			Self::do_repay(&who, asset, balance, collateral_asset)?;
 			Self::deposit_event(Event::DepositRepaid { who, balance });
 			Ok(())
 		}
@@ -1315,9 +1341,10 @@ pub mod pallet {
 		}
 
 		fn do_repay(
-			_who: &T::AccountId,
+			who: &T::AccountId,
 			asset: AssetIdOf<T>,
-			balance: BalanceOf<T>,
+			balance: AssetBalanceOf<T>,
+			collateral_asset: AssetIdOf<T>,
 		) -> DispatchResult {
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquidityWithdrawal);
 
@@ -1327,6 +1354,69 @@ pub mod pallet {
 				LendingPoolStorage::<T>::contains_key(&asset_pool),
 				Error::<T>::LendingPoolDoesNotExist
 			);
+
+			// get the lending pool and update the indexes
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool);
+			pool.update_indexes()?;
+
+			// get the repay amount and check if loan exists
+			let mut loan = Borrows::<T>::get((who, asset, collateral_asset))
+				.ok_or(Error::<T>::LoanDoesNotExists)?;
+			let repayable_balance = pool.repayable_amount(loan.borrowed_balance)?;
+
+			// take max upto repayable amount
+			let (pay, is_full_payment) = if balance <= repayable_balance {
+				(balance, false)
+			} else {
+				(repayable_balance, true)
+			};
+
+			// Update pool: transfer asset from reserved_balance to borrowed_balance
+			pool.move_asset_on_repay(pay)?;
+
+			// transfer repay amount to the market
+			T::Fungibles::transfer(
+				asset.clone(),
+				who,
+				&Self::account_id(),
+				pay,
+				Preservation::Preserve,
+			)?;
+
+			if is_full_payment {
+				// clear the borrow
+				Borrows::<T>::remove((who, asset, collateral_asset));
+				// release all the collateral
+				T::Fungibles::transfer(
+					collateral_asset.clone(),
+					&Self::account_id(),
+					who,
+					loan.collateral_balance,
+					Preservation::Preserve,
+				)?;
+			} else {
+				// get the amount of collateral to release
+				// pay / repayable_balance * collateral_balance
+				let release_collateral_amount: AssetBalanceOf<T> =
+					Self::get_release_collateral_amount(
+						pay,
+						repayable_balance,
+						loan.collateral_balance,
+					)?;
+				// repay the borrow
+				loan.repay_partial(pay, release_collateral_amount)?;
+				Borrows::<T>::set((who, asset, collateral_asset), Some(loan));
+				// release partial collateral
+				T::Fungibles::transfer(
+					collateral_asset.clone(),
+					&Self::account_id(),
+					who,
+					release_collateral_amount,
+					Preservation::Preserve,
+				)?;
+			}
+
+			// emit event
 
 			Ok(())
 		}
@@ -1411,6 +1501,28 @@ pub mod pallet {
 			_collateral_balance: AssetBalanceOf<T>,
 		) -> AssetBalanceOf<T> {
 			todo!()
+		}
+
+		/// Returns the amount of collateral asset to be released on partila repayement
+		/// Returns release_amount = pay / repayable_balance * collateral_balance
+		fn get_release_collateral_amount(
+			payment: AssetBalanceOf<T>,
+			total_due: AssetBalanceOf<T>,
+			collateral_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let f_payment = FixedU128::from(payment.saturated_into::<u128>());
+			let f_total_due = FixedU128::from(total_due.saturated_into::<u128>());
+			let f_collateral_balance = FixedU128::from(collateral_balance.saturated_into::<u128>());
+
+			let amount = f_payment
+				.checked_div(&f_total_due)
+				.ok_or(Error::<T>::OverflowError)?
+				.checked_mul(&f_collateral_balance)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+
+			Ok(amount)
 		}
 	}
 }

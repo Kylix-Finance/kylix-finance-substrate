@@ -22,6 +22,7 @@ pub struct UserBorrow<T: Config> {
 }
 
 impl<T: Config> UserBorrow<T> {
+	// increase the borrowed and collateral balances upon borrow
 	pub fn increase_borrow(&mut self, b: &Self) -> Result<(), Error<T>> {
 		self.borrowed_balance = self
 			.borrowed_balance
@@ -32,6 +33,23 @@ impl<T: Config> UserBorrow<T> {
 			.checked_add(&b.collateral_balance)
 			.ok_or(Error::<T>::OverflowError)?;
 
+		Ok(())
+	}
+
+	// decrease the borrowed and collateral balances upon partila repayment
+	pub fn repay_partial(
+		&mut self,
+		borrowed_balance: AssetBalanceOf<T>,
+		collateral_balance: AssetBalanceOf<T>,
+	) -> Result<(), Error<T>> {
+		self.borrowed_balance = self
+			.borrowed_balance
+			.checked_sub(&borrowed_balance)
+			.ok_or(Error::<T>::OverflowError)?;
+		self.collateral_balance = self
+			.collateral_balance
+			.checked_sub(&collateral_balance)
+			.ok_or(Error::<T>::OverflowError)?;
 		Ok(())
 	}
 }
