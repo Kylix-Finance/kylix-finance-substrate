@@ -381,7 +381,7 @@ pub mod pallet {
 
 		/// Calculates scaled balance as
 		/// scaled_balance = balance / supply_index
-		pub fn scaled_balance(
+		pub fn scaled_supply_balance(
 			&self,
 			deposit: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
@@ -405,21 +405,6 @@ pub mod pallet {
 				.into_inner()
 				.saturated_into();
 			Ok(scaled_balance)
-		}
-
-		/// Calculates current balance as
-		/// equivalent_balance = balance * supply_index
-		/// equivalent_balance takes accrued interest on deposits into accout.
-		pub fn equivalent_balance(
-			&self,
-			stored_balance: AssetBalanceOf<T>,
-		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let equivalent_balance = FixedU128::from_inner(stored_balance.saturated_into())
-				.checked_mul(&self.supply_index)
-				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				.saturated_into();
-			Ok(equivalent_balance)
 		}
 
 		/// Calculates linear interest as follows
@@ -1094,7 +1079,7 @@ pub mod pallet {
 			// create liquidity token
 			T::Fungibles::create(id.clone(), Self::account_id(), true, One::one())?;
 
-			let scaled_minted_tokens = lending_pool.scaled_balance(balance)?;
+			let scaled_minted_tokens = lending_pool.scaled_supply_balance(balance)?;
 			// mints the lp tokens into the users account
 			Self::update_and_mint(who, asset, id, scaled_minted_tokens, lending_pool.supply_index)?;
 
@@ -1167,7 +1152,7 @@ pub mod pallet {
 				Preservation::Expendable,
 			)?;
 
-			let scaled_minted_tokens = pool.scaled_balance(balance)?;
+			let scaled_minted_tokens = pool.scaled_supply_balance(balance)?;
 			let current_supply_index = pool.supply_index;
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
@@ -1221,7 +1206,7 @@ pub mod pallet {
 			)?;
 
 			// burn the LP asset
-			let burnable_amount = pool.scaled_balance(balance)?;
+			let burnable_amount = pool.scaled_supply_balance(balance)?;
 			T::Fungibles::burn_from(
 				pool.id,
 				who,
