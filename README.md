@@ -6,23 +6,24 @@
 [![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
 [![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-Kylix is a non-custodial substrate dapp that implements Compound V2-style functionality for lending and borrowing assets across the chain. It allows users to participate as depositors or borrowers, lending and borrowing assets on Polkadot. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
+Kylix is a non-custodial substrate dapp that implements Compound V2-style functionality for lending and borrowing assets across the chain. Users can deposit and borrow assets backed by crypto collaterals for interest, creating Collateralized Debt Positions (CDPs) on the Polkadot ecosystem. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income. 
 
 :warning: It is **not a production-ready substrate node**, but it is still a proof of concept. It is discouraged to use this code 'as-is' in a production runtime.
 
-## User Flow
+## User Flows
 
-![Kylix flow](./polkalend.png)
+![Kylix flow](./docs/images/extrinsics_flow1.png)
+![Kylix flow](./docs/images/extrinsics_flow2.png)
 
 ## How does it work - Supply and Withdrawal
 
-Kylix lets users borrow assets for a fee and lend them for interest. A borrower can instantly get a loan and start investing by providing some collateral. When the collateral falls below a specific value, the borrower must top it up to the required level to avoid liquidation. The collateral is unlocked when the borrower returns the loan plus a fee.
+Kylix lets users borrow assets for a fee and lend them for interest. A borrower can instantly get a loan and start investing by providing some collateral. The need for collateral is necessary because credit rating is irrelevant in the context of blockchain accounts, and repayment cannot be enforced in the event of a loan default or a traditional (in financial terms) non-performing loan (NPL). When the collateral falls below a specific value, the borrower must top it up to the required level to avoid liquidation. The collateral is unlocked when the borrower returns the loan plus a fee.
 
-By depositing one of the listed assets, the lender will be able to receive lendTokens and earn lending fee income. lendToken is like a deposit certificate of an underlying asset that accrues interest from being borrowed on Kylix Finance. lendToken is redeemable at any time at a 1-to-1 rate with the underlying asset.
+By depositing one of the listed assets in a lending pool, the lender will be able to receive lendTokens (**kTokens**) and earn lending fee income. kTokens are like a deposit certificate of an underlying asset that accrues interest from being borrowed on Kylix Finance. They are redeemable at any time at a 1-to-1 rate with the underlying asset.
 
 ### Liquidation Protection - Borrow and Repay
 
-A collateralized loan gives borrowers more time to use their funds in return for providing collateral. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, you will likely have a low loan-to-value ratio (LTV), such as 50%, for example. This figure means that your loan will only be half the value of your collateral. This difference provides moving room for the collateral’s value if it decreases. Once your collateral falls below the loan's or some other value, the funds are sold or transferred to the lender.
+Loans are over-collateralized with an asset, which may differ from the loaned asset. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, it is necessary to have a collateral-asset loan-to-value ratio (LTV), such as 75%, on average. This figure means that a loan will only 3/4 the value of your collateral. This difference provides moving room for the collateral’s value if it decreases. Once a collateral falls below the loan's value, the funds are liquidated through an auction mechanism and transferred automatically to the lender.
 
 ## Exposed Extrinsics
 
