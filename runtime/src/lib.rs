@@ -283,6 +283,7 @@ impl lending::Config for Runtime {
 	type NativeBalance = Balances;
 	type Fungibles = Assets;
 	type PalletId = LendingPalletId;
+	type Time = Timestamp;
 }
 
 parameter_types! {
