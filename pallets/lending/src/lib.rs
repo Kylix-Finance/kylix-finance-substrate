@@ -741,6 +741,8 @@ pub mod pallet {
 		LoanDoesNotExists,
 		/// Price of the asset can not be zero
 		InvalidAssetPrice,
+		/// The price of the asset is not avaialble
+		AssetPriceNotSet,
 	}
 
 	#[pallet::call]
@@ -1319,8 +1321,12 @@ pub mod pallet {
 
 			// check sufficiency of collateral asset
 			// get collateral asset value in terms of borrow-asset
-			let equivalent_asset_balace =
-				Self::get_equivalent_asset_amount(who, asset, collateral_asset, collateral_balance);
+			let equivalent_asset_balace = Self::get_equivalent_asset_amount(
+				who,
+				asset,
+				collateral_asset,
+				collateral_balance,
+			)?;
 			// get elligible borrow quantity based on reserve_factor
 			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balace)?;
 			// error if borrow is more than eligibility
@@ -1532,13 +1538,44 @@ pub mod pallet {
 		}
 
 		/// Returns the amount of asset equivalent to the collateral
+		/// checks if price of collateral asset available in terms of asset then
+		/// return `price * collateral_balance `
+		/// else
+		/// check if price of asset available in terms of collateral asset then
+		/// return `collateral_balance / price`
+		/// else fallback to a common base asset
+		/// get the prices of both assets in terms of asset 0 (USDT)  and
+		/// return `collateral_asset_price * collateral_balance / asset_price`
+		/// else
+		/// return error `AssetPriceNotSet`
 		fn get_equivalent_asset_amount(
 			_who: &T::AccountId,
-			_asset: AssetIdOf<T>,
-			_collateral_asset: AssetIdOf<T>,
-			_collateral_balance: AssetBalanceOf<T>,
-		) -> AssetBalanceOf<T> {
-			todo!()
+			asset: AssetIdOf<T>,
+			collateral_asset: AssetIdOf<T>,
+			collateral_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let amount = if let Some(p) = AssetPrices::<T>::get((collateral_asset, asset)) {
+				p.checked_mul(&FixedU128::from_inner(collateral_balance.saturated_into()))
+					.ok_or(Error::<T>::OverflowError)?
+			} else if let Some(p) = AssetPrices::<T>::get((asset, collateral_asset)) {
+				FixedU128::from_inner(collateral_balance.saturated_into())
+					.checked_div(&p)
+					.ok_or(Error::<T>::OverflowError)?
+			} else {
+				let asset_price =
+					AssetPrices::<T>::get((asset, 0)).ok_or(Error::<T>::AssetPriceNotSet)?;
+				let collateral_price = AssetPrices::<T>::get((collateral_asset, 0))
+					.ok_or(Error::<T>::AssetPriceNotSet)?;
+
+				collateral_price
+					.checked_div(&asset_price)
+					.ok_or(Error::<T>::OverflowError)?
+					.checked_mul(&FixedU128::from_inner(collateral_balance.saturated_into()))
+					.ok_or(Error::<T>::OverflowError)?
+			}
+			.into_inner()
+			.saturated_into();
+			Ok(amount)
 		}
 
 		/// Returns the amount of collateral asset to be released on partila repayement
