@@ -48,8 +48,35 @@ This function will return an error in the following scenarios:
 * If the provided assets do not exist.
 * If `amount` is 0 or less.
 * If adding liquidity to the pool fails for any reason due to arithmetic overflows or underflows
-
 </details>
+
+<details>
+<summary><h3>activate_lending_pool</h3></summary>
+
+The `activate_lending_pool` function allows a user to activate a lending pool that is not empty. Once a liquidity pool gets activated supplies operations can be performed otherwise only withdrawals.
+		 
+#### Arguments
+		 
+* `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
+* `asset` - The identifier for the type of asset that the user wants to provide.
+		 
+#### Errors
+		 
+This function will return an error in the following scenarios:
+		 
+* If the origin is not signed (i.e., the function was not called by a user).
+* If the provided assets do not exist.
+* If the pool does not exist.
+* If the pool is already activated.
+* If the pool is empty.
+
+#### Events
+
+If the function succeeds, it triggers an event:
+
+* `LendingPoolActivated(asset_a)` if the lending pool was activated.
+</details>
+
 <details>
 <summary><h3>do_supply</h3></summary>
 
@@ -73,7 +100,7 @@ Create a new lending pool. Deposit initial liquidity (in the form of an asset). 
 
 </details>
 
-<details>
+<!-- details>
 <summary><h3>do_withdraw</h3></summary>
 
 #### Parameters:
@@ -102,11 +129,8 @@ Create a new lending pool. Deposit initial liquidity (in the form of an asset). 
 #### Errors:
 
 #### Tests
-</details>
+</details-->
 
-
-
- 
 
 ## Getting Started
 
@@ -152,17 +176,8 @@ You can also find the source code and instructions for hosting your instance on 
 
 ### Future Improvements
 
-0. a lot.
+This is a POC of Kylix. The current implementation for Kylix MVP is underway.
 
 ## Contribution
 
 Kylix Finance is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
-
-
-1. The pitch deck is missing a couple of slides pointed out by @chris.casini (competitors, tokenomics)
-2. The whitepaper just started https://typst.app/project/r2X0n4utkuHszwXiEKABOT
-3. Mockups and wireframes design are under work from @frateorion https://drive.google.com/drive/folders/1PQ0o80manZsbrESuaVcHQGDyO9OXf3R6
-4. Data models/API are defined in the poc, but we need to describe them
-5. Overview of the tech stack still need to be written 
-6. Documentation of core components, etc still need to be written
-7. Poc is under development both from backend substrate and from frontend side
