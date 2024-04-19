@@ -1,4 +1,5 @@
 # Kylix Finance - The Hub Lending Parachain
+
 ### Kylix Finance is a Collateralized Debt Position (CDP) parachain with an integrated marketplace for bidding on liquidated collateral.
 
 [<img alt="github" src="https://img.shields.io/badge/github-davassi/davassi?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/davassi/kylix-finance/)
@@ -6,7 +7,7 @@
 [![panic forbidden](https://img.shields.io/badge/panic-forbidden-success.svg)](https://github.com/dtolnay/no-panic)
 [![Project Status: Active – The project has reached a kind of usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-Kylix is a non-custodial substrate dapp that implements Compound V2-style functionality for lending and borrowing assets across the chain. Users can deposit and borrow assets backed by crypto collaterals for interest, creating Collateralized Debt Positions (CDPs) on the Polkadot ecosystem. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income. 
+Kylix is a non-custodial substrate dapp that implements Compound V2-style functionality for lending and borrowing assets across the chain. Users can deposit and borrow assets backed by crypto collaterals for interest, creating Collateralized Debt Positions (CDPs) on the Polkadot ecosystem. Borrowers can leverage their assets in an over-collateralised manner, while depositors can provide liquidity and earn interest as a stable passive income.
 
 :warning: It is **not a production-ready substrate node**, but it is still a proof of concept. It is discouraged to use this code 'as-is' in a production runtime.
 
@@ -35,46 +36,47 @@ Kylix Finance currently exposes to the world 9 defined extrinsic:
 The `create_lending_pool` function allows a user to Create a new reserve and then supply it with some liquidity. Given an asset and its amount, it creates a new lending pool, if it does not already exist, and adds the provided liquidity/ The user will receive LP tokens in return in ratio.
 
 #### Parameters:
-* `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
-* `id`: AssetIdOf<T> - The pool id, provided by the user
-* `asset` - The identifier for the type of asset that the user wants to provide.
-* `balance` - The amount of `asset` that the user is providing.
- 
+
+- `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
+- `id`: AssetIdOf<T> - The pool id, provided by the user
+- `asset` - The identifier for the type of asset that the user wants to provide.
+- `balance` - The amount of `asset` that the user is providing.
+
 #### Errors:
 
 This function will return an error in the following scenarios:
 
-* If the origin is not signed (i.e., the function was not called by a user).
-* If the provided assets do not exist.
-* If `amount` is 0 or less.
-* If adding liquidity to the pool fails for any reason due to arithmetic overflows or underflows
+- If the origin is not signed (i.e., the function was not called by a user).
+- If the provided assets do not exist.
+- If `amount` is 0 or less.
+- If adding liquidity to the pool fails for any reason due to arithmetic overflows or underflows
 </details>
 
 <details>
 <summary><h3>activate_lending_pool</h3></summary>
 
 The `activate_lending_pool` function allows a user to activate a lending pool that is not empty. Once a liquidity pool gets activated supplies operations can be performed otherwise only withdrawals.
-		 
+
 #### Arguments
-		 
-* `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
-* `asset` - The identifier for the type of asset that the user wants to provide.
-		 
+
+- `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
+- `asset` - The identifier for the type of asset that the user wants to provide.
+
 #### Errors
-		 
+
 This function will return an error in the following scenarios:
-		 
-* If the origin is not signed (i.e., the function was not called by a user).
-* If the provided assets do not exist.
-* If the pool does not exist.
-* If the pool is already activated.
-* If the pool is empty.
+
+- If the origin is not signed (i.e., the function was not called by a user).
+- If the provided assets do not exist.
+- If the pool does not exist.
+- If the pool is already activated.
+- If the pool is empty.
 
 #### Events
 
 If the function succeeds, it triggers an event:
 
-* `LendingPoolActivated(asset_a)` if the lending pool was activated.
+- `LendingPoolActivated(asset_a)` if the lending pool was activated.
 </details>
 
 <details>
@@ -83,20 +85,22 @@ If the function succeeds, it triggers an event:
 Create a new lending pool. Deposit initial liquidity (in the form of an asset). Create a new liquidity token. Mint & transfer to the caller accounts an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
 
 #### Parameters:
- * `origin` – Origin for the call. Must be signed.
-  * `liquidity_token_id` – ID of the liquidity token to be created. The asset with this ID must *not* exist.
-  * `asset_a_id` – ID of the asset A traded on the created liquidity pool. The asset with this ID must exist.
-  * `asset_b_id` – ID of the asset B traded on the created liquidity pool. The asset with this ID must exist.
-  * `amount_a` – Initial amount of asset A to deposit in the pool. Must be greater than 0.
 
+- `origin` – Origin for the call. Must be signed.
+- `liquidity_token_id` – ID of the liquidity token to be created. The asset with this ID must _not_ exist.
+- `asset_a_id` – ID of the asset A traded on the created liquidity pool. The asset with this ID must exist.
+- `asset_b_id` – ID of the asset B traded on the created liquidity pool. The asset with this ID must exist.
+- `amount_a` – Initial amount of asset A to deposit in the pool. Must be greater than 0.
 
 #### Errors:
-* `LiquidityPoolAlreadyExisting` - Trying to recreate an existing liquidity pool
-* `LiquidityPoolDoesNotExist` - Trying to add or remove liquidity from/to a non-existing liquidity pool
+
+- `LiquidityPoolAlreadyExisting` - Trying to recreate an existing liquidity pool
+- `LiquidityPoolDoesNotExist` - Trying to add or remove liquidity from/to a non-existing liquidity pool
 
 #### Tests
- * `create_new_liquidity_pool_success_test`
-  * `create_the_same_liquidity_pool_twice_fail_test`
+
+- `create_new_liquidity_pool_success_test`
+- `create_the_same_liquidity_pool_twice_fail_test`
 
 </details>
 
@@ -114,7 +118,7 @@ Create a new lending pool. Deposit initial liquidity (in the form of an asset). 
 <summary><h3>do_borrow</h3></summary>
 
 #### Parameters:
- 
+
 #### Errors:
 
 #### Tests
@@ -125,12 +129,11 @@ Create a new lending pool. Deposit initial liquidity (in the form of an asset). 
 
 
 #### Parameters:
- 
+
 #### Errors:
 
 #### Tests
 </details-->
-
 
 ## Getting Started
 
@@ -144,7 +147,7 @@ cargo build --release
 
 to test with logging, use:
 
-```sh
+````sh
 RUST_LOG=runtime=debug cargo t -- --nocapture
 ```sh
 
@@ -153,24 +156,24 @@ RUST_LOG=runtime=debug cargo t -- --nocapture
 The following command starts a single-node development chain that doesn't persist state:
 
 ```sh
-./target/release/node-template --dev
-```
+./target/release/kylix-node --dev
+````
 
 To purge the development chain's state, run the following command:
 
 ```sh
-./target/release/node-template purge-chain --dev
+./target/release/kylix-node purge-chain --dev
 ```
 
 To start the development chain with detailed logging, run the following command:
 
 ```sh
-RUST_BACKTRACE=1 ./target/release/node-template -ldebug --dev
+RUST_BACKTRACE=1 ./target/release/kylix-node -ldebug --dev
 ```
 
 ### Connect with Polkadot-JS Apps Front-End (TODO)
 
-After you start the node template locally, you can interact with it using the hosted version of the [Polkadot/Substrate Portal](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) front-end by connecting to the local node endpoint.
+After you start the kylix node locally, you can interact with it using the hosted version of the [Polkadot/Substrate Portal](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) front-end by connecting to the local node endpoint.
 A hosted version is also available on [IPFS (redirect) here](https://dotapps.io/) or [IPNS (direct) here](ipns://dotapps.io/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer).
 You can also find the source code and instructions for hosting your instance on the [polkadot-js/apps](https://github.com/polkadot-js/apps) repository.
 
