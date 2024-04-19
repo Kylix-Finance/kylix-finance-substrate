@@ -393,6 +393,20 @@ pub mod pallet {
 			Ok(scaled_balance)
 		}
 
+		/// Calculates scaled balance for borrow case as
+		/// scaled_balance = balance / borrow_index
+		pub fn scaled_borrow_balance(
+			&self,
+			borrowed_balance: AssetBalanceOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let scaled_balance = FixedU128::from_inner(borrowed_balance.saturated_into())
+				.checked_div(&self.borrow_index)
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner()
+				.saturated_into();
+			Ok(scaled_balance)
+		}
+
 		/// Calculates current balance as
 		/// equivalent_balance = balance * supply_index
 		/// equivalent_balance takes accrued interest on deposits into accout.
@@ -1249,9 +1263,12 @@ pub mod pallet {
 			// error if borrow is more than eligibility
 			ensure!(eligible_asset_amount >= balance, Error::<T>::NotEnoughCollateral);
 
+			// Save sacled balance as per current borrow_index
+			let scaled_balance = pool.scaled_borrow_balance(balance)?;
+
 			let borrow: UserBorrow<T> = UserBorrow {
 				borrowed_asset: asset,
-				borrowed_balance: balance,
+				borrowed_balance: scaled_balance,
 				collateral_asset,
 				collateral_balance,
 			};
