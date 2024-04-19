@@ -1213,6 +1213,12 @@ pub mod pallet {
 				Error::<T>::InvalidLiquidityWithdrawal
 			);
 
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(asset);
+			ensure!(
+				LendingPoolStorage::<T>::contains_key(&asset_pool),
+				Error::<T>::LendingPoolDoesNotExist
+			);
 			let user_collateral_balance = T::Fungibles::reducible_balance(
 				collateral_asset,
 				who,
@@ -1222,13 +1228,6 @@ pub mod pallet {
 			ensure!(
 				user_collateral_balance >= collateral_balance,
 				Error::<T>::NotEnoughLiquiditySupply
-			);
-
-			// let's check if our pool does exist
-			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
 			);
 
 			// let's check if the pool is active
@@ -1387,6 +1386,7 @@ pub mod pallet {
 				.saturated_into::<u64>()
 		}
 
+		/// Returns the amount of asset equivalent to the collateral
 		fn get_equivalent_asset_amount(
 			_who: &T::AccountId,
 			_asset: AssetIdOf<T>,
