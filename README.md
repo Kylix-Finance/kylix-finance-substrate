@@ -11,6 +11,12 @@ Kylix is a non-custodial substrate dapp that implements Compound V2-style functi
 
 :warning: It is **not a production-ready substrate node**, but it is still a proof of concept. It is discouraged to use this code 'as-is' in a production runtime.
 
+ <p align="center">
+    <a href="https://github.com/Kylix-Finance/kylix-finance-substrate/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/Kylix-Finance/kylix-finance-substrate/issues">Request Feature</a>
+</p>
+
 ## User Flows
 
 ![Kylix flow](./docs/images/extrinsics_flow1.png)
@@ -26,116 +32,28 @@ By depositing one of the listed assets in a lending pool, the lender will be abl
 
 Loans are over-collateralized with an asset, which may differ from the loaned asset. A borrower can provide a variety of crypto to back up their loans. With crypto being volatile, it is necessary to have a collateral-asset loan-to-value ratio (LTV), such as 75%, on average. This figure means that a loan will only 3/4 the value of your collateral. This difference provides moving room for the collateral’s value if it decreases. Once a collateral falls below the loan's value, the funds are liquidated through an auction mechanism and transferred automatically to the lender.
 
-## Exposed Extrinsics
-
-Kylix Finance currently exposes to the world 9 defined extrinsic:
-
-<details>
-<summary><h3>create_lending_pool</h3></summary>
-
-The `create_lending_pool` function allows a user to Create a new reserve and then supply it with some liquidity. Given an asset and its amount, it creates a new lending pool, if it does not already exist, and adds the provided liquidity/ The user will receive LP tokens in return in ratio.
-
-#### Parameters:
-
-- `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
-- `id`: AssetIdOf<T> - The pool id, provided by the user
-- `asset` - The identifier for the type of asset that the user wants to provide.
-- `balance` - The amount of `asset` that the user is providing.
-
-#### Errors:
-
-This function will return an error in the following scenarios:
-
-- If the origin is not signed (i.e., the function was not called by a user).
-- If the provided assets do not exist.
-- If `amount` is 0 or less.
-- If adding liquidity to the pool fails for any reason due to arithmetic overflows or underflows
-</details>
-
-<details>
-<summary><h3>activate_lending_pool</h3></summary>
-
-The `activate_lending_pool` function allows a user to activate a lending pool that is not empty. Once a liquidity pool gets activated supplies operations can be performed otherwise only withdrawals.
-
-#### Arguments
-
-- `origin` - The origin caller of this function. This should be signed by the user that creates the lending pool and add some liquidity.
-- `asset` - The identifier for the type of asset that the user wants to provide.
-
-#### Errors
-
-This function will return an error in the following scenarios:
-
-- If the origin is not signed (i.e., the function was not called by a user).
-- If the provided assets do not exist.
-- If the pool does not exist.
-- If the pool is already activated.
-- If the pool is empty.
-
-#### Events
-
-If the function succeeds, it triggers an event:
-
-- `LendingPoolActivated(asset_a)` if the lending pool was activated.
-</details>
-
-<details>
-<summary><h3>do_supply</h3></summary>
-
-Create a new lending pool. Deposit initial liquidity (in the form of an asset). Create a new liquidity token. Mint & transfer to the caller accounts an amount of the liquidity token equal to `currency_amount`. Emits two events on success: `LiquidityPoolCreated` and `AddedLiquidity`.
-
-#### Parameters:
-
-- `origin` – Origin for the call. Must be signed.
-- `liquidity_token_id` – ID of the liquidity token to be created. The asset with this ID must _not_ exist.
-- `asset_a_id` – ID of the asset A traded on the created liquidity pool. The asset with this ID must exist.
-- `asset_b_id` – ID of the asset B traded on the created liquidity pool. The asset with this ID must exist.
-- `amount_a` – Initial amount of asset A to deposit in the pool. Must be greater than 0.
-
-#### Errors:
-
-- `LiquidityPoolAlreadyExisting` - Trying to recreate an existing liquidity pool
-- `LiquidityPoolDoesNotExist` - Trying to add or remove liquidity from/to a non-existing liquidity pool
-
-#### Tests
-
-- `create_new_liquidity_pool_success_test`
-- `create_the_same_liquidity_pool_twice_fail_test`
-
-</details>
-
-<!-- details>
-<summary><h3>do_withdraw</h3></summary>
-
-#### Parameters:
-
-#### Errors:
-
-#### Tests
-</details>
-
-<details>
-<summary><h3>do_borrow</h3></summary>
-
-#### Parameters:
-
-#### Errors:
-
-#### Tests
-</details>
-
-<details>
-<summary><h3>do_repay</h3></summary>
-
-
-#### Parameters:
-
-#### Errors:
-
-#### Tests
-</details-->
-
 ## Getting Started
+
+### Built with
+
+Kylix Financce project is built with:
+
+- [Rust](https://www.rust-lang.org/)
+- [Substrate](https://substrate.dev/)
+
+### Prerequisites
+
+```
+curl https://sh.rustup.rs -sSf | sh
+```
+
+Please also install the following dependencies:
+
+- `cmake`
+- `clang` (>=10.0.0)
+- `clang-dev`
+- `libc6-dev`
+- `libssl-dev`
 
 ### Build
 
@@ -183,4 +101,20 @@ This is a POC of Kylix. The current implementation for Kylix MVP is underway.
 
 ## Contribution
 
-Kylix Finance is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/davassi/polkalend-finance/issues).
+Kylix Finance is a work in progress. If you have suggestions for features, or if you find any issues in the code, design, interface, etc, please feel free to share them on our [GitHub](https://github.com/Kylix-Finance/kylix-finance-substrate/issues) or reach us on Discord:
+
+- [Discord](https://discord.gg/QjrYHwTJth)
+
+## License
+
+Kylix Finance is licensed under the terms of the Apache License (Version 2.0). See LICENSE
+
+## Contact
+
+Website: [kylix.financce](https://www.kylix.finance)
+
+Email: [info at kylix.finance](info@kylix.finance)
+
+Discord: [Discord](https://discord.gg/QjrYHwTJth)
+
+Telegram: [Telegram](https://t.me/kylix_finance_parachain)
