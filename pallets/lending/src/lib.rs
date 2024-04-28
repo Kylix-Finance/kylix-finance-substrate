@@ -817,7 +817,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolActivated(asset_a)` if the lending pool was activated.
+		/// * `LendingPoolActivated(who, asset_a)` if the lending pool was activated.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::default())]
 		pub fn activate_lending_pool(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
@@ -848,6 +848,11 @@ pub mod pallet {
 		/// * If the balance amount to supply is not valid.
 		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
 		///  underflows
+		/// # Events
+		///
+		/// If the function succeeds, it triggers an event:
+		///
+		/// * `DepositSupplied(who, asset, balance)` if the lending pool has been supplied.
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::default())]
 		pub fn supply(
@@ -984,6 +989,26 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `claim_rewards` function allows a user to claim their rewards.
+		///
+		/// # Arguments
+		///
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		///   claiming rewards.
+		/// * `balance` - The amount of rewards to be claimed.
+		///
+		/// # Errors
+		///
+		/// This function will return an error in the following scenarios:
+		///
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		///
+		/// # Events
+		///
+		/// If the function succeeds, it triggers an event:
+		///
+		/// * `RewardsClaimed { who, balance }`: Notifies the system that rewards have been claimed
+		///   by a user.
 		#[pallet::call_index(6)]
 		#[pallet::weight(Weight::default())]
 		pub fn claim_rewards(origin: OriginFor<T>, balance: BalanceOf<T>) -> DispatchResult {
@@ -1016,7 +1041,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolDeactivated(asset_a)` if the lending pool was deactivated.
+		/// * `LendingPoolDeactivated(who, asset_a)` if the lending pool was deactivated.
 		#[pallet::call_index(7)]
 		#[pallet::weight(Weight::default())]
 		pub fn deactivate_lending_pool(
@@ -1028,7 +1053,27 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(8)]
+		/// The `update_pool_rate_model` function allows a user to update the rate model of a
+		/// lending pool.
+		///
+		/// # Arguments
+		///
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		///   updating the rate model.
+		/// * `asset` - The identifier for the type of asset associated with the lending pool.
+		///
+		/// # Errors
+		///
+		/// This function will return an error in the following scenarios:
+		///
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		///
+		/// # Events
+		///
+		/// If the function succeeds, it triggers an event:
+		///
+		/// * `LendingPoolRateModelUpdated { who, asset }`: Notifies the system that the rate model
+		///   of a lending pool was updated by a user.
 		#[pallet::weight(Weight::default())]
 		pub fn update_pool_rate_model(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -1036,6 +1081,26 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// The `update_pool_kink` function allows a user to update the kink of a lending pool.
+		///
+		/// # Arguments
+		///
+		/// * `origin` - The origin caller of this function. This should be signed by the user
+		///   updating the kink.
+		/// * `asset` - The identifier for the type of asset associated with the lending pool.
+		///
+		/// # Errors
+		///
+		/// This function will return an error in the following scenarios:
+		///
+		/// * If the origin is not signed (i.e., the function was not called by a user).
+		///
+		/// # Events
+		///
+		/// If the function succeeds, it triggers an event:
+		///
+		/// * `LendingPoolKinkUpdated { who, asset }`: Notifies the system that the kink of a
+		///   lending pool was updated by a user.
 		#[pallet::call_index(9)]
 		#[pallet::weight(Weight::default())]
 		pub fn update_pool_kink(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
@@ -1058,9 +1123,9 @@ pub mod pallet {
 		/// - `price`: The price of `asset_1` in terms of `asset_2`. This must be a non-zero value
 		///   to avoid errors.
 		///
-		/// # Emits
-		/// - `AssetPriceAdded`: This event is emitted after the price is successfully set. It
-		///   contains the asset identifiers and the new price.
+		/// # Events
+		/// - `AssetPriceAdded { asset_1, asset_2, price }`: This event is emitted after the price
+		///   is successfully set. It contains the asset identifiers and the new price.
 		///
 		/// # Errors
 		/// - `InvalidAssetPrice`: This error is thrown if the `price` parameter is zero.
