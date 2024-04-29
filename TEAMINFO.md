@@ -12,6 +12,10 @@ At Kylix Finance, our mission is to bridge the gap within the Polkadot ecosystem
 
 - **Alessio Giannini** - Founder & Tech: [short info soon]
 
+- **Katsiaryna Trudava** - Finance & Data Analysis: [short info soon]
+
+- **Andrea Falaschi** - Design & UX: [short info soon]
+
 - **Chris Casini** - Advisor: ```Serial entrepreneur. Started his career as a real estate specialist in Miami. His tenacious persistence, ability to connect with others, and passion for blockchain technology motivated him to start a blockchain startup. He believes blockchain technology will improve the current world systems. He initially focused on the SocialFi / creator economy sub-sector of blockchain. His current focus is on bringing more developers into the industry to build top-class dApps that can onboard millions of users. He did the Hong Kong Polkadot Blockchain Academy ( founders track) and was one of the four founders to graduate with distinction.```
 
 - **Kumar Gunjan** - Tech: ```Kumar is a seasoned Blockchain Developer with a robust educational background from PBA, Hong Kong, specializing in Substrate, ZKP, and IPFS technologies. His expertise lies in designing distributed protocols and developing decentralized applications (Dapps), seamlessly merging web2 and web3 technologies. Kumar has spearheaded pivotal projects, such as implementing anonymous logins with ZKP and crafting React-based Dapps for enhanced user experiences. His leadership skills are evident in effectively managing dynamic teams, while his proficiency in communication and presentation sets him apart. With an entrepreneurial mindset, Kumar drives the integration of cutting-edge tech stacks, fostering the adoption of web3 technologies. His contributions have garnered recognition in community forums, including a notable win at the Polkadot hackathon in 2023.```
