@@ -43,26 +43,28 @@ jobs:
       - name: Run application
         run: |
           # Start the application in the background
-          cargo run --release &
-
-          # Get the PID of the background process
+          cargo run > $LOG_FILE 2>&1 &
           APP_PID=$!
 
-          # Wait for a minute to let the application start
-          sleep 60
-          # Check if the application started correctly
-          if journalctl _PID=$APP_PID | grep -q "Running JSON-RPC server"; then
+          # Wait for a few seconds to let the application start
+          sleep 10
+
+          # Check the log file for a success message
+          if grep -q "Running JSON-RPC server" $LOG_FILE; then
             echo "Application started successfully"
           else
             echo "Application failed to start"
-            journalctl _PID=$APP_PID  # Print the journal logs for the application
+            cat $LOG_FILE
             kill $APP_PID
             exit 1
           fi
 
-          # Kill the application
-          kill $APP_PID
-
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID
+          fi
       # - name: Check Build for Benchmarking
       #   run: >
       #     pushd node &&
