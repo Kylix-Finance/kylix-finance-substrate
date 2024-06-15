@@ -40,9 +40,29 @@ jobs:
         run: |
           SKIP_WASM_BUILD=1 cargo check --release
 
-      - name: Run Build
+      - name: Run application
         run: |
-          cargo run --release
+          # Start the application in the background
+          cargo run --release &
+
+          # Get the PID of the background process
+          APP_PID=$!
+
+          # Wait for a minute to let the application start
+          sleep 60
+
+          # Check if the application started correctly by checking logs or health endpoint
+          if grep -q "Running JSON-RPC server" <(tail -n 100 /path/to/log/file.log); then
+            echo "Application started successfully"
+          else
+            echo "Application failed to start"
+            kill $APP_PID
+            exit 1
+          fi
+
+          # Kill the application
+          kill $APP_PID
+
       # - name: Check Build for Benchmarking
       #   run: >
       #     pushd node &&
