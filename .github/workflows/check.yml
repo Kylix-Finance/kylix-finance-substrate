@@ -47,7 +47,7 @@ jobs:
           APP_PID=$!
 
           # Wait for a few seconds to let the application start
-          sleep 200
+          sleep 1200
 
           # Check the log file for a success message
           if grep -q "Running JSON-RPC server" kylix.log; then
