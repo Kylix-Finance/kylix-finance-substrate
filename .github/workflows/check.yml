@@ -50,9 +50,8 @@ jobs:
 
           # Wait for a minute to let the application start
           sleep 60
-          ls /var/log/
           # Check if the application started correctly by checking logs or health endpoint
-          if grep -q "Running JSON-RPC server" <(tail -n 100 /var/log/file.log); then
+          if grep -q "Running JSON-RPC server" <(tail -n 100 /var/log/journal); then
             echo "Application started successfully"
           else
             echo "Application failed to start"
