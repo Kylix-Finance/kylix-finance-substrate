@@ -43,18 +43,18 @@ jobs:
       - name: Run application
         run: |
           # Start the application in the background
-          cargo run > $LOG_FILE 2>&1 &
+          cargo run > kylix.log 2>&1 &
           APP_PID=$!
 
           # Wait for a few seconds to let the application start
           sleep 10
 
           # Check the log file for a success message
-          if grep -q "Running JSON-RPC server" $LOG_FILE; then
+          if grep -q "Running JSON-RPC server" kylix.log; then
             echo "Application started successfully"
           else
             echo "Application failed to start"
-            cat $LOG_FILE
+            cat kylix.log
             kill $APP_PID
             exit 1
           fi
