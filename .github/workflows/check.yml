@@ -50,11 +50,12 @@ jobs:
 
           # Wait for a minute to let the application start
           sleep 60
-          # Check if the application started correctly by checking logs or health endpoint
-          if grep -q "Running JSON-RPC server" <(tail -n 100 /var/log/journal); then
+          # Check if the application started correctly
+          if journalctl _PID=$APP_PID | grep -q "Running JSON-RPC server"; then
             echo "Application started successfully"
           else
             echo "Application failed to start"
+            journalctl _PID=$APP_PID  # Print the journal logs for the application
             kill $APP_PID
             exit 1
           fi
