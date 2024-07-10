@@ -42,6 +42,9 @@ where
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
+    use crate::rpc_impl::LendingPoolRpcImpl;
+	use crate::rpc_api::LendingPoolApiServer;
+
 	let mut module = RpcModule::new(());
 	let FullDeps { client, pool, deny_unsafe } = deps;
 
@@ -52,6 +55,9 @@ where
 	// `YourRpcStruct` should have a reference to a client, which is needed
 	// to call into the runtime.
 	// `module.merge(YourRpcTrait::into_rpc(YourRpcStruct::new(ReferenceToClient, ...)))?;`
+
+	module.merge(LendingPoolRpcImpl::new().into_rpc())?;
+
 
 	Ok(module)
 }

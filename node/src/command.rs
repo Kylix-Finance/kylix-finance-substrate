@@ -10,6 +10,11 @@ use sc_cli::SubstrateCli;
 use sc_service::PartialComponents;
 use sp_keyring::Sr25519Keyring;
 
+// Added imports for the RPC implementation
+use crate::rpc_api::LendingPoolApiServer;
+use crate::rpc_impl::LendingPoolRpcImpl;
+use jsonrpsee::core::Error;
+
 #[cfg(feature = "try-runtime")]
 use try_runtime_cli::block_building_info::timestamp_with_aura_info;
 
@@ -46,6 +51,23 @@ impl SubstrateCli for Cli {
 				Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
 		})
 	}
+}
+
+// Added function to handle lending pool command
+pub fn handle_lending_pool_command() -> Result<(), Error> {
+    let lending_pool_rpc = LendingPoolRpcImpl::new();
+    let result = tokio::runtime::Runtime::new()?.block_on(lending_pool_rpc.get_lending_pools());
+    match result {
+        Ok((pools, totals)) => {
+            println!("Lending Pools: {:?}", pools);
+            println!("Aggregated Totals: {:?}", totals);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Error fetching lending pools: {:?}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Parse and run command line arguments
@@ -201,6 +223,14 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::ChainInfo(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run::<Block>(&config))
+		},
+		// Added case to handle the LendingPool command
+		Some(Subcommand::LendingPool) => {
+			let result = handle_lending_pool_command();
+			match result {
+				Ok(_) => Ok(()),
+				Err(e) => Err(sc_cli::Error::Application(e.into())),
+			}
 		},
 		None => {
 			let runner = cli.create_runner(&cli.run)?;
