@@ -79,10 +79,7 @@ mod borrow_repay;
 use borrow_repay::UserBorrow;
 
 #[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -487,7 +484,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn udpate_borrow_index(&mut self) -> Result<(), Error<T>> {
+		fn update_borrow_index(&mut self) -> Result<(), Error<T>> {
 			let incr = self.calculate_compunded_interest()?;
 			let new_index =
 				self.borrow_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
@@ -495,10 +492,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn update_indexes(&mut self) -> Result<(), Error<T>> {
+		pub fn update_indexes(&mut self) -> Result<(), Error<T>> {
 			if self.last_accrued_interest_at < Pallet::<T>::now_in_seconds() {
 				self.update_supply_index()?;
-				self.udpate_borrow_index()?;
+				self.update_borrow_index()?;
 			}
 			Ok(())
 		}
@@ -572,8 +569,7 @@ pub mod pallet {
 	/// StorageMap AssetPool { AssetId } => LendingPool { PoolId, Balance }
 	#[pallet::storage]
 	#[pallet::getter(fn reserve_pools)]
-	pub type LendingPoolStorage<T> =
-		StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>>;
+	pub type LendingPoolStorage<T> = StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>>;
 
 	// Now we need to define the properties of the underlying asset used in the lending pool
 	#[derive(
@@ -768,8 +764,8 @@ pub mod pallet {
 		/// * If the origin is not signed (i.e., the function was not called by a user).
 		/// * If the provided assets do not exist.
 		/// * If `amount` is 0 or less.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		///   underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		///   underflow
 		///
 		/// # Events
 		///
@@ -846,8 +842,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		///  underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		///  underflow
 		/// # Events
 		///
 		/// If the function succeeds, it triggers an event:
@@ -885,8 +881,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -925,8 +921,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -967,8 +963,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -1505,7 +1501,7 @@ pub mod pallet {
 					&Self::account_id(),
 					who,
 					release_collateral_amount,
-					Preservation::Preserve,
+					Preservation::Expendable,
 				)?;
 			}
 
@@ -1577,7 +1573,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Returns the the block's timestamp in seconds as u64
+		/// Returns the block's timestamp in seconds as u64
 		fn now_in_seconds() -> u64 {
 			core::time::Duration::from_millis(T::Time::now().saturated_into::<u64>())
 				.as_secs()
@@ -1625,26 +1621,28 @@ pub mod pallet {
 			Ok(amount)
 		}
 
-		/// Returns the amount of collateral asset to be released on partila repayement
+		/// Returns the amount of collateral asset to be released on partial repayment
 		/// Returns release_amount = pay / repayable_balance * collateral_balance
 		fn get_release_collateral_amount(
 			payment: AssetBalanceOf<T>,
 			total_due: AssetBalanceOf<T>,
 			collateral_balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let f_payment = FixedU128::from(payment.saturated_into::<u128>());
-			let f_total_due = FixedU128::from(total_due.saturated_into::<u128>());
-			let f_collateral_balance = FixedU128::from(collateral_balance.saturated_into::<u128>());
+			let f_payment = FixedU128::from_inner(payment.saturated_into::<u128>());
+			let f_total_due = FixedU128::from_inner(total_due.saturated_into::<u128>());
+			let f_collateral_balance =
+				FixedU128::from_inner(collateral_balance.saturated_into::<u128>());
 
-			let amount = f_payment
-				.checked_div(&f_total_due)
-				.ok_or(Error::<T>::OverflowError)?
+			let release_ratio =
+				f_payment.checked_div(&f_total_due).ok_or(Error::<T>::OverflowError)?;
+
+			let release_amount = release_ratio
 				.checked_mul(&f_collateral_balance)
 				.ok_or(Error::<T>::OverflowError)?
 				.into_inner()
 				.saturated_into();
 
-			Ok(amount)
+			Ok(release_amount)
 		}
 	}
 }
