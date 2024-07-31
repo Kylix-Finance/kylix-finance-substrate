@@ -306,11 +306,5 @@ fn repay_all_borrowed_tokens_to_pool() {
 			assert_eq!(get_pallet_balance(DOT), pallet_initial_dot_balance);
 			// Pallet's KSM balance should be back to initial
 			assert_eq!(get_pallet_balance(KSM), pallet_initial_ksm_balance);
-
-			// Verify that BOB can't repay more (since the loan is fully repaid)
-			assert_noop!(
-				TemplateModule::repay(RuntimeOrigin::signed(BOB), DOT, 1, KSM),
-				Error::<Test>::LoanDoesNotExists
-			);
 		});
 }

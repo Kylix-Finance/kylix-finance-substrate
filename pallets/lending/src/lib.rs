@@ -492,7 +492,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn update_indexes(&mut self) -> Result<(), Error<T>> {
+		pub fn update_indexes(&mut self) -> Result<(), Error<T>> {
 			if self.last_accrued_interest_at < Pallet::<T>::now_in_seconds() {
 				self.update_supply_index()?;
 				self.update_borrow_index()?;
@@ -1501,7 +1501,7 @@ pub mod pallet {
 					&Self::account_id(),
 					who,
 					release_collateral_amount,
-					Preservation::Preserve,
+					Preservation::Expendable,
 				)?;
 			}
 
@@ -1628,19 +1628,21 @@ pub mod pallet {
 			total_due: AssetBalanceOf<T>,
 			collateral_balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let f_payment = FixedU128::from(payment.saturated_into::<u128>());
-			let f_total_due = FixedU128::from(total_due.saturated_into::<u128>());
-			let f_collateral_balance = FixedU128::from(collateral_balance.saturated_into::<u128>());
+			let f_payment = FixedU128::from_inner(payment.saturated_into::<u128>());
+			let f_total_due = FixedU128::from_inner(total_due.saturated_into::<u128>());
+			let f_collateral_balance =
+				FixedU128::from_inner(collateral_balance.saturated_into::<u128>());
 
-			let amount = f_payment
-				.checked_div(&f_total_due)
-				.ok_or(Error::<T>::OverflowError)?
+			let release_ratio =
+				f_payment.checked_div(&f_total_due).ok_or(Error::<T>::OverflowError)?;
+
+			let release_amount = release_ratio
 				.checked_mul(&f_collateral_balance)
 				.ok_or(Error::<T>::OverflowError)?
 				.into_inner()
 				.saturated_into();
 
-			Ok(amount)
+			Ok(release_amount)
 		}
 	}
 }
