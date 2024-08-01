@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="! # The Lending pallet of Kylix ! ! ## Overview ! ! The Lending pallet is responsible for managing the lending pools and the treasury operations. ! ! The lending pallet adopts a protocol similar to Compound V2 for its lending operations, ! offering a pool-based approach to aggregate assets from all users. ! ! Interest rates adjust dynamically in response to the supply and demand conditions. ! Additionally, for every lending positions a new token is minted, thus enabling the transfer of ! ownership. ! ! Implemented Extrinsics: ! ! 0. create_lending_pool() ! 1. activate_lending_pool() ! 2. supply() ! 3. withdraw() ! 4. borrow() ! 5. repay() ! 6. claim_rewards() ! 7. deactivate_lending_pool() ! 8. update_pool_rate_model() ! 9. update_pool_kink() !"><title>import_section in lending - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-5ca6ca2a1f83705a.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="lending" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (cefe1dcef 2024-07-22)" data-channel="nightly" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc attr"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../lending/index.html">lending</a><span class="version">4.0.0-dev</span></h2></div><div class="sidebar-elems"></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Attribute Macro <a href="index.html">lending</a>::<wbr><a class="attr" href="#">import_section</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>#[import_section]</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</p>
+<p>TODO:</p>
+<ol>
+<li>rename the pallet to <code>lending</code> and the module to <code>lending</code></li>
+<li>implement the <code>ManagerOrigin</code> type for reserve pool special operations</li>
+<li>implement tests for the lending logic</li>
+<li>implement the <code>WeightInfo</code> trait for the pallet</li>
+</ol>
+<p>! Use case
+An attribute macro that can be attached to a module declaration. Doing so will
+Imports the contents of the specified external pallet section that was defined
+previously using <a href="attr.pallet_section.html" title="attr lending::pallet_section"><code>#[pallet_section]</code></a>.</p>
+<h3 id="example"><a class="doc-anchor" href="#example">§</a>Example</h3>
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[import_section(some_section)]
+#[pallet]
+</span><span class="kw">pub mod </span>pallet {
+    <span class="comment">// ...
+</span>}</code></pre></div>
+<p>where <code>some_section</code> was defined elsewhere via:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[pallet_section]
+</span><span class="kw">pub mod </span>some_section {
+    <span class="comment">// ...
+</span>}</code></pre></div>
+<p>This will result in the contents of <code>some_section</code> being <em>verbatim</em> imported into
+the pallet above. Note that since the tokens for <code>some_section</code> are essentially
+copy-pasted into the target pallet, you cannot refer to imports that don’t also
+exist in the target pallet, but this is easily resolved by including all relevant
+<code>use</code> statements within your pallet section, so they are imported as well, or by
+otherwise ensuring that you have the same imports on the target pallet.</p>
+<p>It is perfectly permissible to import multiple pallet sections into the same pallet,
+which can be done by having multiple <code>#[import_section(something)]</code> attributes
+attached to the pallet.</p>
+<p>Note that sections are imported by their module name/ident, and should be referred to by
+their <em>full path</em> from the perspective of the target pallet.</p>
+</div></details></section></div></main></body></html>

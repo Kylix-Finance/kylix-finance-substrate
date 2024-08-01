@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Sets the price of one asset in terms of another asset."><title>set_asset_price in lending::pallet::dispatchables - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-5ca6ca2a1f83705a.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="lending" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (cefe1dcef 2024-07-22)" data-channel="nightly" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../lending/index.html">lending</a><span class="version">4.0.0-dev</span></h2></div><div class="sidebar-elems"><h2><a href="index.html">In lending::pallet::dispatchables</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Function <a href="../../index.html">lending</a>::<wbr><a href="../index.html">pallet</a>::<wbr><a href="index.html">dispatchables</a>::<wbr><a class="fn" href="#">set_asset_price</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/lending/lib.rs.html#89">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub fn set_asset_price&lt;T: <a class="trait" href="../trait.Config.html" title="trait lending::pallet::Config">Config</a>&gt;(
+    asset_1: <a class="type" href="../../type.AssetIdOf.html" title="type lending::AssetIdOf">AssetIdOf</a>&lt;T&gt;,
+    asset_2: <a class="type" href="../../type.AssetIdOf.html" title="type lending::AssetIdOf">AssetIdOf</a>&lt;T&gt;,
+    price: <a class="struct" href="../../struct.FixedU128.html" title="struct lending::FixedU128">FixedU128</a>,
+)</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Sets the price of one asset in terms of another asset.</p>
+<p>The <code>set_asset_price</code> extrinsic allows a user to specify the relative price of one asset
+(<code>asset_1</code>) in terms of another asset (<code>asset_2</code>).</p>
+<h2 id="parameters"><a class="doc-anchor" href="#parameters">§</a>Parameters</h2>
+<ul>
+<li><code>origin</code>: The transaction origin. This must be a signed extrinsic.</li>
+<li><code>asset_1</code>: The identifier for the first asset. This is the asset whose price is being
+set.</li>
+<li><code>asset_2</code>: The identifier for the second asset. This is the asset relative to which
+the price is measured.</li>
+<li><code>price</code>: The price of <code>asset_1</code> in terms of <code>asset_2</code>. This must be a non-zero value
+to avoid errors.</li>
+</ul>
+<h2 id="events"><a class="doc-anchor" href="#events">§</a>Events</h2>
+<ul>
+<li><code>AssetPriceAdded { asset_1, asset_2, price }</code>: This event is emitted after the price
+is successfully set. It contains the asset identifiers and the new price.</li>
+</ul>
+<h2 id="errors"><a class="doc-anchor" href="#errors">§</a>Errors</h2>
+<ul>
+<li><code>InvalidAssetPrice</code>: This error is thrown if the <code>price</code> parameter is zero.</li>
+</ul>
+<h2 id="note-this-should-be-moved-to-a-new-pallet-prices"><a class="doc-anchor" href="#note-this-should-be-moved-to-a-new-pallet-prices">§</a>Note this should be moved to a new pallet <code>prices</code></h2><h2 id="warning-doc-only"><a class="doc-anchor" href="#warning-doc-only">§</a>Warning: Doc-Only</h2>
+<p>This function is an automatically generated, and is doc-only, uncallable
+stub. See the real version in
+<a href="../struct.Pallet.html#method.set_asset_price" title="associated function lending::pallet::Pallet::set_asset_price"><code>Pallet::set_asset_price</code></a>.</p>
+</div></details></section></div></main></body></html>

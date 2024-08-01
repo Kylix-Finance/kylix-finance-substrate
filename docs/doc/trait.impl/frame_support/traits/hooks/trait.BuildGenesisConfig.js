@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"lending":[["impl&lt;T: <a class=\"trait\" href=\"lending/pallet/trait.Config.html\" title=\"trait lending::pallet::Config\">Config</a>&gt; <a class=\"trait\" href=\"lending/trait.BuildGenesisConfig.html\" title=\"trait lending::BuildGenesisConfig\">BuildGenesisConfig</a> for <a class=\"struct\" href=\"lending/pallet/struct.GenesisConfig.html\" title=\"struct lending::pallet::GenesisConfig\">GenesisConfig</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
