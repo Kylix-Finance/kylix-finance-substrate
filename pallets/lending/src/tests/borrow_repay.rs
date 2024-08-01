@@ -1,68 +1,6 @@
-use crate::{tests::mock::*, AssetPool, Error, Event, LendingPool};
+use crate::{tests::mock::*, AssetPool, Error, Event};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::FixedU128;
-
-#[test]
-fn deposit_tokens_into_pool() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000), (DOT, BOB, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			setup_active_pool(DOT, 1000);
-			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500));
-
-			System::assert_last_event(
-				Event::DepositSupplied { who: BOB, asset: DOT, balance: 500 }.into(),
-			);
-		});
-}
-
-#[test]
-fn deposit_tokens_into_inactive_pool_fails() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000), (DOT, BOB, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			assert_ok!(TemplateModule::create_lending_pool(
-				RuntimeOrigin::signed(ALICE),
-				LENDING_POOL_TOKEN,
-				DOT,
-				1000
-			));
-			assert_noop!(
-				TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500),
-				Error::<Test>::LendingPoolNotActive
-			);
-		});
-}
-
-#[test]
-fn redeem_all_tokens_from_pool() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000), (DOT, BOB, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			setup_active_pool(DOT, 1000);
-			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500));
-			assert_ok!(TemplateModule::withdraw(RuntimeOrigin::signed(BOB), DOT, 500));
-
-			System::assert_last_event(Event::DepositWithdrawn { who: BOB, balance: 500 }.into());
-		});
-}
-
-#[test]
-fn redeem_partial_tokens_from_pool() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000), (DOT, BOB, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			setup_active_pool(DOT, 1000);
-			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500));
-			assert_ok!(TemplateModule::withdraw(RuntimeOrigin::signed(BOB), DOT, 250));
-
-			System::assert_last_event(Event::DepositWithdrawn { who: BOB, balance: 250 }.into());
-		});
-}
 
 #[test]
 fn borrow_maximum_allowed_tokens_from_pool() {

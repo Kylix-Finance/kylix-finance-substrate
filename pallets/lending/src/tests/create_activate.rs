@@ -4,33 +4,43 @@ use sp_runtime::{FixedU128, Permill};
 
 pub type Rate = FixedU128;
 
-type SignedOrigin = u64;
-const BOB: SignedOrigin = 2u64;
 const NEW_ASSET: AssetId = 8888u32;
 
 #[test]
-fn create_lending_pool_for_new_asset_works() {
+fn test_create_lending_pool_succeeds_for_new_asset() {
 	ExtBuilder::default()
 		.with_endowed_balances(vec![(NEW_ASSET, ALICE, 1_000_000)])
 		.build()
 		.execute_with(|| {
+			let amount = 1_000;
 			assert_ok!(TemplateModule::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				NEW_ASSET,
-				1_000
+				amount
 			));
 
 			let asset_pool = AssetPool::<Test>::from(NEW_ASSET);
 			assert!(TemplateModule::reserve_pools(asset_pool).is_some());
-			System::assert_last_event(
-				Event::DepositSupplied { who: ALICE, asset: NEW_ASSET, balance: 1_000 }.into(),
-			);
+
+			let events = System::events();
+			assert!(events.iter().any(|record| record.event ==
+				Event::LendingPoolAdded { who: ALICE, asset: NEW_ASSET }.into()));
+			assert!(events.iter().any(|record| record.event ==
+				Event::DepositSupplied { who: ALICE, asset: NEW_ASSET, balance: amount }
+					.into()));
+			assert!(events.iter().any(|record| record.event ==
+				Event::LPTokenMinted {
+					who: ALICE,
+					asset: LENDING_POOL_TOKEN,
+					balance: amount
+				}
+				.into()));
 		});
 }
 
 #[test]
-fn create_lending_pool_for_existing_asset_fails() {
+fn test_create_lending_pool_fails_for_existing_asset() {
 	ExtBuilder::default()
 		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
 		.build()
@@ -57,7 +67,42 @@ fn create_lending_pool_for_existing_asset_fails() {
 }
 
 #[test]
-fn create_lending_pool_with_existing_id_fails() {
+fn test_create_lending_pool_fails_with_zero_amount() {
+	ExtBuilder::default()
+		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
+		.build()
+		.execute_with(|| {
+			// Pool creation should fail
+			assert_noop!(
+				TemplateModule::create_lending_pool(
+					RuntimeOrigin::signed(ALICE),
+					LENDING_POOL_TOKEN,
+					DOT,
+					0
+				),
+				Error::<Test>::InvalidLiquiditySupply
+			);
+		});
+}
+
+#[test]
+fn test_create_lending_pool_fails_with_insufficient_balance() {
+	ExtBuilder::default().with_endowed_balances(vec![]).build().execute_with(|| {
+		// Pool creation should fail
+		assert_noop!(
+			TemplateModule::create_lending_pool(
+				RuntimeOrigin::signed(ALICE),
+				LENDING_POOL_TOKEN,
+				DOT,
+				1_000
+			),
+			Error::<Test>::NotEnoughLiquiditySupply
+		);
+	});
+}
+
+#[test]
+fn test_create_lending_pool_fails_with_existing_id() {
 	ExtBuilder::default()
 		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000), (KSM, ALICE, 1_000_000)])
 		.build()
@@ -84,48 +129,7 @@ fn create_lending_pool_with_existing_id_fails() {
 }
 
 #[test]
-fn create_lending_pool_and_supply_not_yet_active() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			assert_ok!(TemplateModule::create_lending_pool(
-				RuntimeOrigin::signed(ALICE),
-				LENDING_POOL_TOKEN,
-				DOT,
-				1_000
-			));
-			assert_noop!(
-				TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000),
-				Error::<Test>::LendingPoolNotActive
-			);
-		});
-}
-
-#[test]
-fn create_lending_pool_and_supply_active() {
-	ExtBuilder::default()
-		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
-		.build()
-		.execute_with(|| {
-			assert_ok!(TemplateModule::create_lending_pool(
-				RuntimeOrigin::signed(ALICE),
-				LENDING_POOL_TOKEN,
-				DOT,
-				1_000
-			));
-			assert_noop!(
-				TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000),
-				Error::<Test>::LendingPoolNotActive
-			);
-
-			TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT).unwrap();
-			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000),);
-		});
-}
-
-#[test]
-fn test_the_default_utilisation_rate() {
+fn test_default_utilisation_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		let pool: LendingPool<Test> = LendingPool::from(0, DOT, 10000).expect("failed");
 
@@ -143,12 +147,10 @@ fn test_the_default_utilisation_rate() {
 }
 
 #[test]
-fn test_utilisation_rate_with_some_supply_and_borrowing() {
+fn test_utilisation_rate_with_partial_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
 		pool.borrowed_balance = 5000;
-
-		println!("Test Pool1: {:#?}", pool);
 
 		let ut = pool.utilisation_ratio().unwrap();
 		assert_eq!(ut, Permill::from_percent(50)); // 5000/10000 = 50%
@@ -162,7 +164,7 @@ fn test_utilisation_rate_with_some_supply_and_borrowing() {
 }
 
 #[test]
-fn test_utilisation_rate_with_some_supply_and_borrowing2() {
+fn test_utilisation_rate_with_high_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
 		pool.borrowed_balance = 9000;
@@ -173,7 +175,7 @@ fn test_utilisation_rate_with_some_supply_and_borrowing2() {
 }
 
 #[test]
-fn test_supply_rate() {
+fn test_supply_interest_rate_with_partial_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
 		pool.borrowed_balance = 5000;
@@ -189,7 +191,7 @@ fn test_supply_rate() {
 }
 
 #[test]
-fn test_supply_rate2() {
+fn test_supply_interest_rate_with_high_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
 		pool.borrowed_balance = 9000;
@@ -200,26 +202,36 @@ fn test_supply_rate2() {
 }
 
 #[test]
-fn try_to_supply_no_lending_pool() {
+fn test_activate_fails_for_non_existent_lending_pool() {
 	ExtBuilder::default()
 		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
 		.build()
 		.execute_with(|| {
 			// Supply
 			assert_noop!(
-				TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, 1_000),
+				TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
 				Error::<Test>::LendingPoolDoesNotExist
 			);
 		});
 }
 
 #[test]
-fn try_to_supply_no_liquidity() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Supply
-		assert_noop!(
-			TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 1_000),
-			Error::<Test>::NotEnoughLiquiditySupply
-		);
-	});
+fn test_activate_fails_for_already_activated_lending_pool() {
+	ExtBuilder::default()
+		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(TemplateModule::create_lending_pool(
+				RuntimeOrigin::signed(ALICE),
+				LENDING_POOL_TOKEN,
+				DOT,
+				1_000
+			));
+
+			TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT).unwrap();
+			assert_noop!(
+				TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
+				Error::<Test>::LendingPoolAlreadyActivated
+			);
+		});
 }
