@@ -1070,7 +1070,8 @@ pub mod pallet {
 		///
 		/// * `LendingPoolRateModelUpdated { who, asset }`: Notifies the system that the rate model
 		///   of a lending pool was updated by a user.
-		#[pallet::weight(Weight::default())]
+		#[crate::pallet::call_index(8)]
+		#[crate::pallet::weight(Weight::default())]
 		pub fn update_pool_rate_model(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::LendingPoolRateModelUpdated { who, asset });
