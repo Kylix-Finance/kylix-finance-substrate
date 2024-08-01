@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use borrow_repay::UserBorrow;
 ///! # The Lending pallet of Kylix
 ///!
 ///! ## Overview
@@ -76,7 +77,6 @@ pub type LendingPoolId = u32;
 pub const SECONDS_PER_YEAR: u64 = 365u64 * 24 * 60 * 60;
 
 mod borrow_repay;
-use borrow_repay::UserBorrow;
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -654,14 +654,14 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>), SupplyIndex, ValueQuery>;
 
 	/// The borrow status of accounts
-	/// (AccountId, corrowed_asset_id, collateral_asset_id) => UserBorrow details
+	/// (AccountId, borrowed_asset_id, collateral_asset_id) => UserBorrow details
 	#[pallet::storage]
 	pub type Borrows<T: Config> =
 		StorageMap<_, Blake2_128Concat, (AccountOf<T>, AssetIdOf<T>, AssetIdOf<T>), UserBorrow<T>>;
 
-	/// The storage to hold prices of assets w.r.t. other other assets
-	/// This is the dummy storage, ideally this functionality would be implemented in a dedicatd
-	/// pallet sotres (asset_id1, asset_id2) => FixedU128
+	/// The storage to hold prices of assets w.r.t. other assets
+	/// This is the dummy storage, ideally this functionality would be implemented in a dedicated
+	/// pallet store (asset_id1, asset_id2) => FixedU128
 	#[pallet::storage]
 	pub type AssetPrices<T: Config> =
 		StorageMap<_, Blake2_128Concat, (AssetIdOf<T>, AssetIdOf<T>), FixedU128, OptionQuery>;
@@ -1070,8 +1070,8 @@ pub mod pallet {
 		///
 		/// * `LendingPoolRateModelUpdated { who, asset }`: Notifies the system that the rate model
 		///   of a lending pool was updated by a user.
-		#[crate::pallet::call_index(8)]
-		#[crate::pallet::weight(Weight::default())]
+		#[pallet::call_index(8)]
+		#[pallet::weight(Weight::default())]
 		pub fn update_pool_rate_model(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::deposit_event(Event::LendingPoolRateModelUpdated { who, asset });
