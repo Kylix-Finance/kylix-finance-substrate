@@ -48,7 +48,7 @@ jobs:
       - name: Run application
         run: |
           # Start the application in the background
-          SKIP_WASM_BUILD=1 cargo run > kylix.log 2>&1 &
+          SKIP_WASM_BUILD=1 cargo run --release > kylix.log 2>&1 &
           APP_PID=$!
 
           # Wait for a few seconds to let the application start
