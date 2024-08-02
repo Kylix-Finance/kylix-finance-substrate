@@ -28,9 +28,9 @@ jobs:
       - name: Install Rust
         run: |
           rustup update stable --no-self-update
-          rustup toolchain install nightly
-          rustup target add wasm32-unknown-unknown --toolchain nightly
-
+          # rustup toolchain install nightly
+          # rustup target add wasm32-unknown-unknown --toolchain nightly
+          rustup target add wasm32-unknown-unknown
       # Rust cache
       - uses: Swatinem/rust-cache@v2
 
