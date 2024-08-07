@@ -8,7 +8,7 @@
 /// operations. !
 ///! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
 ///! offering a pool-based approach to aggregate assets from all users.
-///!  
+///!
 ///! Interest rates adjust dynamically in response to the supply and demand conditions.
 ///! Additionally, for every lending positions a new token is minted, thus enabling the
 /// transfer of ! ownership.
@@ -79,10 +79,7 @@ mod borrow_repay;
 use borrow_repay::UserBorrow;
 
 #[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -487,7 +484,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn udpate_borrow_index(&mut self) -> Result<(), Error<T>> {
+		fn update_borrow_index(&mut self) -> Result<(), Error<T>> {
 			let incr = self.calculate_compunded_interest()?;
 			let new_index =
 				self.borrow_index.checked_mul(&incr).ok_or(Error::<T>::OverflowError)?;
@@ -495,10 +492,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn update_indexes(&mut self) -> Result<(), Error<T>> {
+		pub fn update_indexes(&mut self) -> Result<(), Error<T>> {
 			if self.last_accrued_interest_at < Pallet::<T>::now_in_seconds() {
 				self.update_supply_index()?;
-				self.udpate_borrow_index()?;
+				self.update_borrow_index()?;
 			}
 			Ok(())
 		}
@@ -572,8 +569,7 @@ pub mod pallet {
 	/// StorageMap AssetPool { AssetId } => LendingPool { PoolId, Balance }
 	#[pallet::storage]
 	#[pallet::getter(fn reserve_pools)]
-	pub type LendingPoolStorage<T> =
-		StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>, ValueQuery>;
+	pub type LendingPoolStorage<T> = StorageMap<_, Blake2_128Concat, AssetPool<T>, LendingPool<T>>;
 
 	// Now we need to define the properties of the underlying asset used in the lending pool
 	#[derive(
@@ -728,7 +724,7 @@ pub mod pallet {
 		/// The user has not enough liquidity
 		NotEnoughLiquiditySupply,
 		/// The user wants to withdraw more than allowed!
-		NotEnoughElegibleLiquidityToWithdraw,
+		NotEnoughEligibleLiquidityToWithdraw,
 		/// Lending Pool is empty
 		LendingPoolIsEmpty,
 		/// The classic Overflow Error
@@ -737,11 +733,11 @@ pub mod pallet {
 		IdAlreadyExists,
 		/// The user has not enough collateral assets
 		NotEnoughCollateral,
-		/// The Loan being repayed does not exists
+		/// The Loan being repaid does not exist
 		LoanDoesNotExists,
 		/// Price of the asset can not be zero
 		InvalidAssetPrice,
-		/// The price of the asset is not avaialble
+		/// The price of the asset is not available
 		AssetPriceNotSet,
 	}
 
@@ -768,8 +764,8 @@ pub mod pallet {
 		/// * If the origin is not signed (i.e., the function was not called by a user).
 		/// * If the provided assets do not exist.
 		/// * If `amount` is 0 or less.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		///   underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		///   underflow
 		///
 		/// # Events
 		///
@@ -846,8 +842,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		///  underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		///  underflow
 		/// # Events
 		///
 		/// If the function succeeds, it triggers an event:
@@ -885,8 +881,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -925,8 +921,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -967,8 +963,8 @@ pub mod pallet {
 		/// * If the pool is not active.
 		/// * If the user has not enough liquidity to supply.
 		/// * If the balance amount to supply is not valid.
-		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflows or
-		/// underflows
+		/// * If adding liquidity to the pool fails for any reason due to arithmetic overflow or
+		/// underflow
 		///
 		/// # Events
 		///
@@ -1166,7 +1162,7 @@ pub mod pallet {
 			// First, let's check the balance amount is valid
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquiditySupply);
 
-			// Second, let's check the if user has enough liquidity
+			// Second, let's check if the user has enough liquidity
 			let user_balance = T::Fungibles::balance(asset.clone(), who);
 			ensure!(user_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
@@ -1184,9 +1180,9 @@ pub mod pallet {
 			let asset_pool = AssetPool::from(asset);
 			let lending_pool = LendingPool::<T>::from(id, asset, balance)?;
 
-			LendingPoolStorage::<T>::insert(asset_pool, &lending_pool);
+			LendingPoolStorage::<T>::set(&asset_pool, Some(lending_pool.clone()));
 
-			// let's transfers the tokens (asset) from the users account into pallet account
+			// Transfer the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
 				asset.clone(),
 				who,
@@ -1216,18 +1212,16 @@ pub mod pallet {
 		pub fn do_activate_lending_pool(asset: AssetIdOf<T>) -> DispatchResult {
 			// let's check if our pool does exist before activating it
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 
 			// let's check if our pool is actually already active and balance > 0
-			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
 			ensure!(pool.is_active() == false, Error::<T>::LendingPoolAlreadyActivated);
 			ensure!(!pool.is_empty(), Error::<T>::LendingPoolIsEmpty);
 
 			// ok now we can activate it
-			LendingPoolStorage::<T>::mutate(asset_pool, |v| v.activated = true);
+			pool.activated = true;
+			LendingPoolStorage::set(&asset_pool, Some(pool));
 			Ok(())
 		}
 
@@ -1241,18 +1235,14 @@ pub mod pallet {
 			// First, let's check the balance amount to supply is valid
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquiditySupply);
 
-			// Second, let's check the if user has enough liquidity tp supply
+			// Second, let's check if the user has enough liquidity tp supply
 			let user_balance = T::Fungibles::balance(asset.clone(), who);
 			ensure!(user_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
 			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
-
-			let mut pool = LendingPoolStorage::<T>::get(&asset_pool);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 
 			// let's ensure that the lending pool is active
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
@@ -1262,7 +1252,7 @@ pub mod pallet {
 			pool.reserve_balance =
 				pool.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
 
-			// let's transfers the tokens (asset) from the users account into pallet account
+			// Transfers the tokens (asset) from the users account into pallet account
 			T::Fungibles::transfer(
 				asset.clone(),
 				who,
@@ -1276,7 +1266,7 @@ pub mod pallet {
 			Self::update_and_mint(who, asset, pool.id, scaled_minted_tokens, current_supply_index)?;
 
 			// let's update the balances of the pool now
-			LendingPoolStorage::<T>::set(&asset_pool, pool);
+			LendingPoolStorage::<T>::set(&asset_pool, Some(pool));
 
 			Ok(())
 		}
@@ -1294,25 +1284,21 @@ pub mod pallet {
 
 			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 
-			let mut pool = LendingPoolStorage::<T>::get(asset_pool.clone());
-
-			// let's check the if the pool has enough liquidity
+			// let's check if the pool has enough liquidity
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
 			// Update pool's indexes
 			pool.update_indexes()?;
 
-			// let's check if the user is actually elegible to withdraw!
+			// let's check if the user is actually eligible to withdraw!
 			let scaled_lp_tokens = T::Fungibles::balance(pool.id.clone(), &who);
 			let eligible_lp_tokens = pool.accrued_deposit(scaled_lp_tokens)?;
 			ensure!(
 				eligible_lp_tokens >= balance,
-				Error::<T>::NotEnoughElegibleLiquidityToWithdraw
+				Error::<T>::NotEnoughEligibleLiquidityToWithdraw
 			);
 
 			// Transfer the asset to the user
@@ -1337,7 +1323,7 @@ pub mod pallet {
 				pool.reserve_balance.checked_sub(&balance).ok_or(Error::<T>::OverflowError)?;
 
 			// let's update the balances of the pool now
-			LendingPoolStorage::<T>::set(&asset_pool, pool);
+			LendingPoolStorage::<T>::set(&asset_pool, Some(pool));
 
 			Ok(())
 		}
@@ -1359,10 +1345,8 @@ pub mod pallet {
 
 			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 			let user_collateral_balance = T::Fungibles::reducible_balance(
 				collateral_asset,
 				who,
@@ -1375,29 +1359,28 @@ pub mod pallet {
 			);
 
 			// let's check if the pool is active
-			let mut pool = LendingPoolStorage::<T>::get(asset_pool.clone());
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
 
-			// let's check the if the pool has enough liquidity
+			// let's check if the pool has enough liquidity
 			ensure!(pool.reserve_balance >= balance, Error::<T>::NotEnoughLiquiditySupply);
 
-			// Update pool's indexex
+			// Update pool's indexes
 			pool.update_indexes()?;
 
 			// check sufficiency of collateral asset
 			// get collateral asset value in terms of borrow-asset
-			let equivalent_asset_balace = Self::get_equivalent_asset_amount(
+			let equivalent_asset_balance = Self::get_equivalent_asset_amount(
 				who,
 				asset,
 				collateral_asset,
 				collateral_balance,
 			)?;
-			// get elligible borrow quantity based on reserve_factor
-			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balace)?;
+			// get eligible borrow quantity based on reserve_factor
+			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balance)?;
 			// error if borrow is more than eligibility
 			ensure!(eligible_asset_amount >= balance, Error::<T>::NotEnoughCollateral);
 
-			// Save sacled balance as per current borrow_index
+			// Save scaled balance as per current borrow_index
 			let scaled_balance = pool.scaled_borrow_balance(balance)?;
 
 			let borrow: UserBorrow<T> = UserBorrow {
@@ -1425,7 +1408,7 @@ pub mod pallet {
 			// Update pool: transfer asset from reserved_balance to borrowed_balance
 			pool.move_asset_on_borrow(balance)?;
 
-			LendingPoolStorage::<T>::set(&asset_pool, pool);
+			LendingPoolStorage::<T>::set(&asset_pool, Some(pool));
 
 			// Transfer the asset to the user
 			T::Fungibles::transfer(
@@ -1458,13 +1441,10 @@ pub mod pallet {
 
 			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
 
 			// get the lending pool and update the indexes
-			let mut pool = LendingPoolStorage::<T>::get(&asset_pool);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 			pool.update_indexes()?;
 
 			// get the repay amount and check if loan exists
@@ -1521,7 +1501,7 @@ pub mod pallet {
 					&Self::account_id(),
 					who,
 					release_collateral_amount,
-					Preservation::Preserve,
+					Preservation::Expendable,
 				)?;
 			}
 
@@ -1534,17 +1514,15 @@ pub mod pallet {
 		pub fn do_deactivate_lending_pool(asset: AssetIdOf<T>) -> DispatchResult {
 			// let's check if our pool does exist before de-activating it
 			let asset_pool = AssetPool::<T>::from(asset);
-			ensure!(
-				LendingPoolStorage::<T>::contains_key(&asset_pool),
-				Error::<T>::LendingPoolDoesNotExist
-			);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 
 			// let's check if our pool is actually already non-active
-			let pool = LendingPoolStorage::<T>::get(asset_pool.clone());
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolAlreadyDeactivated);
 
 			// ok now we can de-activate it
-			LendingPoolStorage::<T>::mutate(asset_pool, |v| v.activated = false);
+			pool.activated = false;
+			LendingPoolStorage::set(&asset_pool, Some(pool.clone()));
 			Ok(())
 		}
 
@@ -1595,7 +1573,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Returns the the block's timestamp in seconds as u64
+		/// Returns the block's timestamp in seconds as u64
 		fn now_in_seconds() -> u64 {
 			core::time::Duration::from_millis(T::Time::now().saturated_into::<u64>())
 				.as_secs()
@@ -1643,26 +1621,28 @@ pub mod pallet {
 			Ok(amount)
 		}
 
-		/// Returns the amount of collateral asset to be released on partila repayement
+		/// Returns the amount of collateral asset to be released on partial repayment
 		/// Returns release_amount = pay / repayable_balance * collateral_balance
 		fn get_release_collateral_amount(
 			payment: AssetBalanceOf<T>,
 			total_due: AssetBalanceOf<T>,
 			collateral_balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let f_payment = FixedU128::from(payment.saturated_into::<u128>());
-			let f_total_due = FixedU128::from(total_due.saturated_into::<u128>());
-			let f_collateral_balance = FixedU128::from(collateral_balance.saturated_into::<u128>());
+			let f_payment = FixedU128::from_inner(payment.saturated_into::<u128>());
+			let f_total_due = FixedU128::from_inner(total_due.saturated_into::<u128>());
+			let f_collateral_balance =
+				FixedU128::from_inner(collateral_balance.saturated_into::<u128>());
 
-			let amount = f_payment
-				.checked_div(&f_total_due)
-				.ok_or(Error::<T>::OverflowError)?
+			let release_ratio =
+				f_payment.checked_div(&f_total_due).ok_or(Error::<T>::OverflowError)?;
+
+			let release_amount = release_ratio
 				.checked_mul(&f_collateral_balance)
 				.ok_or(Error::<T>::OverflowError)?
 				.into_inner()
 				.saturated_into();
 
-			Ok(amount)
+			Ok(release_amount)
 		}
 	}
 }

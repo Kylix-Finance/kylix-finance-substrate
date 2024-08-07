@@ -1,18 +1,34 @@
 use crate as pallet_template;
+use crate::{AssetBalanceOf, AssetIdOf, BalanceOf};
+pub type Fungibles = <Test as crate::Config>::Fungibles;
 use frame_support::{
-	derive_impl, parameter_types,
+	assert_ok, derive_impl, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, ConstU64},
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
+use std::{cell::RefCell, collections::HashSet};
 
+pub type AssetId = u32;
+pub type AccountId = u64;
 type Block = frame_system::mocking::MockBlock<Test>;
+
 type Balance = u128;
+pub const ADMIN: AccountId = 1;
+pub const ALICE: AccountId = 2;
+pub const BOB: AccountId = 3;
+pub const DOT: AssetId = 1u32;
+pub const KSM: AssetId = 2u32;
+pub const LENDING_POOL_TOKEN: AssetId = 99999u32;
+
+thread_local! {
+	pub static ENDOWED_BALANCES: RefCell<Vec<(AssetId, AccountId, Balance)>> = RefCell::new(Vec::new());
+}
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -115,7 +131,61 @@ impl pallet_template::Config for Test {
 	// rate model, kink, activate, deactivate)."] 	type ManagerOrigin = ();
 }
 
-// Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+pub struct ExtBuilder {
+	endowed_balances: Vec<(AssetId, AccountId, Balance)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		ENDOWED_BALANCES.with(|v| {
+			v.borrow_mut().clear();
+		});
+		Self { endowed_balances: vec![] }
+	}
+}
+
+impl ExtBuilder {
+	pub fn with_endowed_balances(mut self, balances: Vec<(AssetId, AccountId, Balance)>) -> Self {
+		self.endowed_balances = balances;
+		self
+	}
+
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		let mut unique_assets = HashSet::new();
+		let mut assets = vec![];
+		for (asset_id, _, _) in self.endowed_balances.clone().into_iter() {
+			if unique_assets.insert(asset_id) {
+				// Only push the asset if it wasn't already in the set
+				assets.push((asset_id, ADMIN, true, 1));
+			}
+		}
+
+		pallet_assets::GenesisConfig::<Test> {
+			assets,
+			metadata: vec![],
+			accounts: self.endowed_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+}
+
+pub fn setup_active_pool(asset: AssetIdOf<Test>, initial_balance: BalanceOf<Test>) {
+	assert_ok!(TemplateModule::create_lending_pool(
+		RuntimeOrigin::signed(ALICE),
+		LENDING_POOL_TOKEN,
+		asset,
+		initial_balance
+	));
+	assert_ok!(TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), asset));
+}
+
+pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
+	let pallet_account: AccountId = KylixPalletId::get().into_account_truncating();
+	return Fungibles::balance(asset, pallet_account);
 }
