@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["activate_lending_pool","borrow","claim_rewards","create_lending_pool","deactivate_lending_pool","repay","set_asset_price","supply","update_pool_kink","update_pool_rate_model","withdraw"]};

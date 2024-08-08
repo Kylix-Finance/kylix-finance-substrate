@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"mod":["dispatchables","storage_types"],"struct":["AssetPool","GenesisConfig","InterestRateModel","LendingPool","Pallet","SupplyIndex","UnderlyingAsset"],"trait":["Config"],"type":["AssetPrices","Borrows","LendingPoolStorage","MinMaxExchangeRate","Module","SupplyIndexStorage","UnderlyingAssetStorage"]};
