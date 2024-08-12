@@ -9,7 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use frame_support::traits::AsEnsureOriginWithArg;
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_grandpa::AuthorityId as GrandpaId;
-use sp_api::impl_runtime_apis;
+use sp_api::{impl_runtime_apis, decl_runtime_apis};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -24,6 +24,9 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+use codec::{Encode, Decode};
+use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -317,6 +320,24 @@ impl pallet_assets::Config for Runtime {
 	type BenchmarkHelper = ();
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct LendingPoolInfo {
+    pub id: u32,
+    pub asset: Vec<u8>,
+    pub collateral_q: u64,
+    pub utilization: u64,
+    pub borrow_apy: u64,
+    pub supply_apy: u64,
+    pub collateral: bool,
+    pub balance: u128,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct AggregatedTotals {
+    pub total_supply: u128,
+    pub total_borrow: u128,
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime {
@@ -379,6 +400,12 @@ mod benches {
 		[pallet_sudo, Sudo]
 		[lending, Lending]
 	);
+}
+
+decl_runtime_apis! {
+	pub trait LendingPoolApi {
+		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals);
+	}
 }
 
 impl_runtime_apis! {
@@ -609,6 +636,30 @@ impl_runtime_apis! {
 			// NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
 			// have a backtrace here.
 			Executive::try_execute_block(block, state_root_check, signature_check, select).expect("execute-block failed")
+		}
+	}
+
+	impl crate::LendingPoolApi<Block> for Runtime {
+		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals) {
+			// Example implementation
+            let pools = vec![
+                LendingPoolInfo {
+                    id: 4, 
+					asset: "TokenD".as_bytes().to_vec(), 
+					collateral_q: 900, 
+					utilization: 700, 
+					borrow_apy: 70, 
+					supply_apy: 40, 
+					collateral: true, 
+					balance: 4000 
+                },
+                // Add more pools as needed
+            ];
+            let aggregated_totals = AggregatedTotals {
+                total_supply: 10000,
+                total_borrow: 5000,
+            };
+            (pools, aggregated_totals)
 		}
 	}
 }

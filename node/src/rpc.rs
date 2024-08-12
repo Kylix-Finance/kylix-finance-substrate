@@ -36,28 +36,27 @@ where
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-	C::Api: BlockBuilder<Block>,
+	C::Api: BlockBuilder<Block> + kylix_runtime::LendingPoolApi<Block>,
 	P: TransactionPool + 'static,
 {
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
-    use crate::rpc_impl::LendingPoolRpcImpl;
+    use crate::rpc_impl::LendingPoolApiImpl;
 	use crate::rpc_api::LendingPoolApiServer;
 
 	let mut module = RpcModule::new(());
 	let FullDeps { client, pool, deny_unsafe } = deps;
 
 	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
-	module.merge(TransactionPayment::new(client).into_rpc())?;
+	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	// Extend this RPC with a custom API by using the following syntax.
 	// `YourRpcStruct` should have a reference to a client, which is needed
 	// to call into the runtime.
 	// `module.merge(YourRpcTrait::into_rpc(YourRpcStruct::new(ReferenceToClient, ...)))?;`
 
-	module.merge(LendingPoolRpcImpl::new().into_rpc())?;
-
+	module.merge(LendingPoolApiServer::into_rpc(LendingPoolApiImpl::new(client.clone())))?;
 
 	Ok(module)
 }
