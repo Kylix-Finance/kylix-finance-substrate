@@ -8,17 +8,18 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use frame_support::traits::AsEnsureOriginWithArg;
 use frame_system::{EnsureRoot, EnsureSigned};
+use lending::{fungibles::metadata::Inspect, FixedU128};
 use pallet_grandpa::AuthorityId as GrandpaId;
 use sp_api::{impl_runtime_apis, decl_runtime_apis};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys,
+	create_runtime_str, generic, impl_opaque_keys, 
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, One, Verify,
-	},
-	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, MultiSignature,
+	}, 
+	transaction_validity::{TransactionSource, TransactionValidity}, 
+	ApplyExtrinsicResult, FixedU64, MultiSignature
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -50,6 +51,7 @@ use pallet_transaction_payment::{ConstFeeMultiplier, CurrencyAdapter, Multiplier
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
+pub use sp_runtime::SaturatedConversion;
 
 /// Import the lending pallet.
 pub use lending;
@@ -324,11 +326,13 @@ impl pallet_assets::Config for Runtime {
 pub struct LendingPoolInfo {
     pub id: u32,
     pub asset: Vec<u8>,
+	pub asset_decimals: u32,
     pub collateral_q: u64,
-    pub utilization: u64,
-    pub borrow_apy: u64,
-    pub supply_apy: u64,
+    pub utilization: FixedU64,
+    pub borrow_apy: FixedU128,
+    pub supply_apy: FixedU128,
     pub collateral: bool,
+	pub is_activated: bool,
     pub balance: u128,
 }
 
@@ -641,25 +645,45 @@ impl_runtime_apis! {
 
 	impl crate::LendingPoolApi<Block> for Runtime {
 		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals) {
-			// Example implementation
-            let pools = vec![
-                LendingPoolInfo {
-                    id: 4, 
-					asset: "TokenD".as_bytes().to_vec(), 
-					collateral_q: 900, 
-					utilization: 700, 
-					borrow_apy: 70, 
-					supply_apy: 40, 
-					collateral: true, 
-					balance: 4000 
-                },
-                // Add more pools as needed
-            ];
-            let aggregated_totals = AggregatedTotals {
-                total_supply: 10000,
-                total_borrow: 5000,
-            };
-            (pools, aggregated_totals)
+			let mut total_supply: u128 = 0;
+			let mut total_borrow: u128 = 0;
+
+			// Collect all the lending pools and aggregate totals in a single iteration
+			let pools: Vec<LendingPoolInfo> = lending::LendingPoolStorage::<Runtime>::iter()
+				.map(|(_, pool)| {
+					// Use the InspectMetadata trait to get the asset name and decimals
+					let asset_name = pallet_assets::Pallet::<Runtime>::name(pool.lend_token_id);
+					let asset_decimals = pallet_assets::Pallet::<Runtime>::decimals(pool.lend_token_id);
+
+					// Calculate the balance=reserve_balance+borrowed_balance
+					let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
+
+					// Accumulate totals
+					total_supply = total_supply.saturating_add(balance);
+					total_borrow = total_borrow.saturating_add(pool.borrowed_balance.saturated_into::<u128>());
+
+					LendingPoolInfo {
+						id: pool.id,
+						asset: asset_name, 
+						asset_decimals: asset_decimals as u32, 
+						collateral_q: pool.collateral_factor.deconstruct().into(),
+						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
+						borrow_apy: pool.borrow_rate.into(),
+						supply_apy: pool.supply_rate.into(),
+						collateral: true, // TODO: hardcoded, resolve
+						is_activated: pool.activated,
+						balance,
+					}
+				})
+				.collect();
+
+			let aggregated_totals = AggregatedTotals {
+				total_supply,
+				total_borrow,
+			};
+
+			// Return the pools and aggregated totals
+			(pools, aggregated_totals)
 		}
 	}
 }
