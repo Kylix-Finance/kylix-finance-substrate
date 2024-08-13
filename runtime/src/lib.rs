@@ -325,8 +325,10 @@ impl pallet_assets::Config for Runtime {
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
 pub struct LendingPoolInfo {
     pub id: u32,
+	pub asset_id: u32,
     pub asset: Vec<u8>,
 	pub asset_decimals: u32,
+	pub asset_symbol: Vec<u8>,
     pub collateral_q: u64,
     pub utilization: FixedU64,
     pub borrow_apy: FixedU128,
@@ -654,6 +656,7 @@ impl_runtime_apis! {
 					// Use the InspectMetadata trait to get the asset name and decimals
 					let asset_name = pallet_assets::Pallet::<Runtime>::name(pool.lend_token_id);
 					let asset_decimals = pallet_assets::Pallet::<Runtime>::decimals(pool.lend_token_id);
+					let asset_symbol = pallet_assets::Pallet::<Runtime>::symbol(pool.lend_token_id);
 
 					// Calculate the balance=reserve_balance+borrowed_balance
 					let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
@@ -664,8 +667,10 @@ impl_runtime_apis! {
 
 					LendingPoolInfo {
 						id: pool.id,
+						asset_id: pool.lend_token_id,
 						asset: asset_name, 
 						asset_decimals: asset_decimals as u32, 
+						asset_symbol: asset_symbol,
 						collateral_q: pool.collateral_factor.deconstruct().into(),
 						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
 						borrow_apy: pool.borrow_rate.into(),
