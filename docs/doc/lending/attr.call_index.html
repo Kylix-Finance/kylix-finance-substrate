@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="! # The Lending pallet of Kylix ! ! ## Overview ! ! The Lending pallet is responsible for managing the lending pools and the treasury operations. ! ! The lending pallet adopts a protocol similar to Compound V2 for its lending operations, ! offering a pool-based approach to aggregate assets from all users. ! ! Interest rates adjust dynamically in response to the supply and demand conditions. ! Additionally, for every lending positions a new token is minted, thus enabling the transfer of ! ownership. ! ! Implemented Extrinsics: ! ! 0. create_lending_pool() ! 1. activate_lending_pool() ! 2. supply() ! 3. withdraw() ! 4. borrow() ! 5. repay() ! 6. claim_rewards() ! 7. deactivate_lending_pool() ! 8. update_pool_rate_model() ! 9. update_pool_kink() !"><title>call_index in lending - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-5ca6ca2a1f83705a.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="lending" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (cefe1dcef 2024-07-22)" data-channel="nightly" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc attr"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../lending/index.html">lending</a><span class="version">4.0.0-dev</span></h2></div><div class="sidebar-elems"></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Attribute Macro <a href="index.html">lending</a>::<wbr><a class="attr" href="#">call_index</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>#[call_index]</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</p>
+<p>TODO:</p>
+<ol>
+<li>rename the pallet to <code>lending</code> and the module to <code>lending</code></li>
+<li>implement the <code>ManagerOrigin</code> type for reserve pool special operations</li>
+<li>implement tests for the lending logic</li>
+<li>implement the <code>WeightInfo</code> trait for the pallet</li>
+</ol>
+<p>! Use case
+Each dispatchable may also be annotated with the <code>#[pallet::call_index($idx)]</code> attribute,
+which explicitly defines the codec index for the dispatchable function in the <code>Call</code> enum.</p>
+<p>All call indexes start from 0, until it encounters a dispatchable function with a defined
+call index. The dispatchable function that lexically follows the function with a defined
+call index will have that call index, but incremented by 1, e.g. if there are 3
+dispatchable functions <code>fn foo</code>, <code>fn bar</code> and <code>fn qux</code> in that order, and only <code>fn bar</code>
+has a call index of 10, then <code>fn qux</code> will have an index of 11, instead of 1.</p>
+<p>All arguments must implement [<code>Debug</code>], [<code>PartialEq</code>], [<code>Eq</code>], <code>Decode</code>, <code>Encode</code>, and
+[<code>Clone</code>]. For ease of use, bound by the trait <code>frame_support::pallet_prelude::Member</code>.</p>
+<p>If no <code>#[pallet::call]</code> exists, then a default implementation corresponding to the
+following code is automatically generated:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[pallet::call]
+</span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {}</code></pre></div>
+<p><strong>WARNING</strong>: modifying dispatchables, changing their order, removing some, etc., must be
+done with care. Indeed this will change the outer runtime call type (which is an enum with
+one variant per pallet), this outer runtime call can be stored on-chain (e.g. in
+<code>pallet-scheduler</code>). Thus migration might be needed. To mitigate against some of this, the
+<code>#[pallet::call_index($idx)]</code> attribute can be used to fix the order of the dispatchable so
+that the <code>Call</code> enum encoding does not change after modification. As a general rule of
+thumb, it is therefore adventageous to always add new calls to the end so you can maintain
+the existing order of calls.</p>
+<h4 id="macro-expansion"><a class="doc-anchor" href="#macro-expansion">§</a>Macro expansion</h4>
+<p>The macro creates an enum <code>Call</code> with one variant per dispatchable. This enum implements:
+[<code>Clone</code>], [<code>Eq</code>], [<code>PartialEq</code>], [<code>Debug</code>] (with stripped implementation in <code>not("std")</code>),
+<code>Encode</code>, <code>Decode</code>, <code>GetDispatchInfo</code>, <code>GetCallName</code>, <code>GetCallIndex</code> and
+<code>UnfilteredDispatchable</code>.</p>
+<p>The macro implements the <code>Callable</code> trait on <code>Pallet</code> and a function <code>call_functions</code>
+which returns the dispatchable metadata.</p>
+</div></details></section></div></main></body></html>

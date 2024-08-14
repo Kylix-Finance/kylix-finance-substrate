@@ -1,0 +1,2610 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `lending` crate."><title>lending - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-5ca6ca2a1f83705a.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="lending" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (cefe1dcef 2024-07-22)" data-channel="nightly" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../lending/index.html">lending</a><span class="version">4.0.0-dev</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Aliases</a></li><li><a href="#attributes">Attribute Macros</a></li><li><a href="#derives">Derive Macros</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">lending</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/lending/lib.rs.html#1-1649">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.sp_runtime"><code>pub use frame_support::sp_runtime;</code></div></li><li><div class="item-name"><code>pub use <a class="mod" href="pallet/index.html" title="mod lending::pallet">pallet</a>::*;</code></div></li><li><div class="item-name"><code>pub use <a class="mod" href="weights/index.html" title="mod lending::weights">weights</a>::*;</code></div></li></ul><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="fungible/index.html" title="mod lending::fungible">fungible</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="mod" href="fungibles/index.html" title="mod lending::fungibles">fungibles</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="mod" href="pallet/index.html" title="mod lending::pallet">pallet</a></div><div class="desc docblock-short">The <code>pallet</code> module in each FRAME pallet hosts the most important items needed
+to construct this pallet.</div></li><li><div class="item-name"><a class="mod" href="storage/index.html" title="mod lending::storage">storage</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="mod" href="weights/index.html" title="mod lending::weights">weights</a></div><div class="desc docblock-short">Autogenerated weights for pallet_template</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.ensure.html" title="macro lending::ensure">ensure</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Blake2_128.html" title="struct lending::Blake2_128">Blake2_128</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Blake2_128Concat.html" title="struct lending::Blake2_128Concat">Blake2_128Concat</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Blake2_256.html" title="struct lending::Blake2_256">Blake2_256</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.BoundedVec.html" title="struct lending::BoundedVec">BoundedVec</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.ConstU32.html" title="struct lending::ConstU32">ConstU32</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.CountedStorageMap.html" title="struct lending::CountedStorageMap">CountedStorageMap</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.FixedU128.html" title="struct lending::FixedU128">FixedU128</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.GetDefault.html" title="struct lending::GetDefault">GetDefault</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Identity.html" title="struct lending::Identity">Identity</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.InherentData.html" title="struct lending::InherentData">InherentData</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.MakeFatalError.html" title="struct lending::MakeFatalError">MakeFatalError</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.NMapKey.html" title="struct lending::NMapKey">NMapKey</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.OptionQuery.html" title="struct lending::OptionQuery">OptionQuery</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.PalletId.html" title="struct lending::PalletId">PalletId</a></div><div class="desc docblock-short">A pallet identifier. These are per pallet and should be stored in a registry somewhere.</div></li><li><div class="item-name"><a class="struct" href="struct.Permill.html" title="struct lending::Permill">Permill</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.PhantomData.html" title="struct lending::PhantomData">PhantomData</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.ResultQuery.html" title="struct lending::ResultQuery">ResultQuery</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.StorageDoubleMap.html" title="struct lending::StorageDoubleMap">StorageDoubleMap</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.StorageMap.html" title="struct lending::StorageMap">StorageMap</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.StorageNMap.html" title="struct lending::StorageNMap">StorageNMap</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.StorageValue.html" title="struct lending::StorageValue">StorageValue</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.StorageVersion.html" title="struct lending::StorageVersion">StorageVersion</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Twox64Concat.html" title="struct lending::Twox64Concat">Twox64Concat</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Twox128.html" title="struct lending::Twox128">Twox128</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Twox256.html" title="struct lending::Twox256">Twox256</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.UserBorrow.html" title="struct lending::UserBorrow">UserBorrow</a></div><div class="desc docblock-short">Definition of the Borrow struct and its properties for an account
+Balances are scaled-down balance taking borrow index into account</div></li><li><div class="item-name"><a class="struct" href="struct.ValidTransaction.html" title="struct lending::ValidTransaction">ValidTransaction</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.ValueQuery.html" title="struct lending::ValueQuery">ValueQuery</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="struct" href="struct.Weight.html" title="struct lending::Weight">Weight</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.DispatchClass.html" title="enum lending::DispatchClass">DispatchClass</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.DispatchError.html" title="enum lending::DispatchError">DispatchError</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.Fortitude.html" title="enum lending::Fortitude">Fortitude</a></div><div class="desc docblock-short">The privilege with which a withdraw operation is conducted.</div></li><li><div class="item-name"><a class="enum" href="enum.InvalidTransaction.html" title="enum lending::InvalidTransaction">InvalidTransaction</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.Pays.html" title="enum lending::Pays">Pays</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.Precision.html" title="enum lending::Precision">Precision</a></div><div class="desc docblock-short">The precision required of an operation generally involving some aspect of quantitative fund
+withdrawal or transfer.</div></li><li><div class="item-name"><a class="enum" href="enum.Preservation.html" title="enum lending::Preservation">Preservation</a></div><div class="desc docblock-short">The mode by which we describe whether an operation should keep an account alive.</div></li><li><div class="item-name"><a class="enum" href="enum.TransactionSource.html" title="enum lending::TransactionSource">TransactionSource</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.TransactionValidityError.html" title="enum lending::TransactionValidityError">TransactionValidityError</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="enum" href="enum.UnknownTransaction.html" title="enum lending::UnknownTransaction">UnknownTransaction</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.MAX_MODULE_ERROR_ENCODED_SIZE.html" title="constant lending::MAX_MODULE_ERROR_ENCODED_SIZE">MAX_MODULE_ERROR_ENCODED_SIZE</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="constant" href="constant.SECONDS_PER_YEAR.html" title="constant lending::SECONDS_PER_YEAR">SECONDS_PER_YEAR</a></div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.AccountIdConversion.html" title="trait lending::AccountIdConversion">AccountIdConversion</a></div><div class="desc docblock-short">This type can be converted into and possibly from an AccountId (which itself is generic).</div></li><li><div class="item-name"><a class="trait" href="trait.BuildGenesisConfig.html" title="trait lending::BuildGenesisConfig">BuildGenesisConfig</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.CheckedAdd.html" title="trait lending::CheckedAdd">CheckedAdd</a></div><div class="desc docblock-short">Performs addition that returns <code>None</code> instead of wrapping around on
+overflow.</div></li><li><div class="item-name"><a class="trait" href="trait.CheckedDiv.html" title="trait lending::CheckedDiv">CheckedDiv</a></div><div class="desc docblock-short">Performs division that returns <code>None</code> instead of panicking on division by zero and instead of
+wrapping around on underflow and overflow.</div></li><li><div class="item-name"><a class="trait" href="trait.CheckedMul.html" title="trait lending::CheckedMul">CheckedMul</a></div><div class="desc docblock-short">Performs multiplication that returns <code>None</code> instead of wrapping around on underflow or
+overflow.</div></li><li><div class="item-name"><a class="trait" href="trait.CheckedSub.html" title="trait lending::CheckedSub">CheckedSub</a></div><div class="desc docblock-short">Performs subtraction that returns <code>None</code> instead of wrapping around on underflow.</div></li><li><div class="item-name"><a class="trait" href="trait.Create.html" title="trait lending::Create">Create</a></div><div class="desc docblock-short">Trait for providing the ability to create new fungible assets.</div></li><li><div class="item-name"><a class="trait" href="trait.Decode.html" title="trait lending::Decode">Decode</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Encode.html" title="trait lending::Encode">Encode</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.EnsureOrigin.html" title="trait lending::EnsureOrigin">EnsureOrigin</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.FixedPointNumber.html" title="trait lending::FixedPointNumber">FixedPointNumber</a></div><div class="desc docblock-short">Something that implements a decimal fixed point number.</div></li><li><div class="item-name"><a class="trait" href="trait.Get.html" title="trait lending::Get">Get</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.GetStorageVersion.html" title="trait lending::GetStorageVersion">GetStorageVersion</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Hooks.html" title="trait lending::Hooks">Hooks</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Inspect.html" title="trait lending::Inspect">Inspect</a></div><div class="desc docblock-short">Trait for providing balance-inspection access to a set of named fungible assets.</div></li><li><div class="item-name"><a class="trait" href="trait.IsType.html" title="trait lending::IsType">IsType</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.MaxEncodedLen.html" title="trait lending::MaxEncodedLen">MaxEncodedLen</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.MaybeSerializeDeserialize.html" title="trait lending::MaybeSerializeDeserialize">MaybeSerializeDeserialize</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Member.html" title="trait lending::Member">Member</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.MomentTime.html" title="trait lending::MomentTime">MomentTime</a></div></li><li><div class="item-name"><a class="trait" href="trait.Mutate.html" title="trait lending::Mutate">Mutate</a></div><div class="desc docblock-short">Trait for providing a basic fungible asset.</div></li><li><div class="item-name"><a class="trait" href="trait.One.html" title="trait lending::One">One</a></div><div class="desc docblock-short">Defines a multiplicative identity element for <code>Self</code>.</div></li><li><div class="item-name"><a class="trait" href="trait.PalletInfoAccess.html" title="trait lending::PalletInfoAccess">PalletInfoAccess</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Parameter.html" title="trait lending::Parameter">Parameter</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.ProvideInherent.html" title="trait lending::ProvideInherent">ProvideInherent</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.SaturatedConversion.html" title="trait lending::SaturatedConversion">SaturatedConversion</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.StorageInfoTrait.html" title="trait lending::StorageInfoTrait">StorageInfoTrait</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.TypeInfo.html" title="trait lending::TypeInfo">TypeInfo</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.TypedGet.html" title="trait lending::TypedGet">TypedGet</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.ValidateUnsigned.html" title="trait lending::ValidateUnsigned">ValidateUnsigned</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="trait" href="trait.Zero.html" title="trait lending::Zero">Zero</a></div><div class="desc docblock-short">Defines an additive identity element for <code>Self</code>.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.ensure_none.html" title="fn lending::ensure_none">ensure_none</a></div><div class="desc docblock-short">Ensure that the origin <code>o</code> represents an unsigned extrinsic. Returns <code>Ok</code> or an <code>Err</code> otherwise.</div></li><li><div class="item-name"><a class="fn" href="fn.ensure_root.html" title="fn lending::ensure_root">ensure_root</a></div><div class="desc docblock-short">Ensure that the origin <code>o</code> represents the root. Returns <code>Ok</code> or an <code>Err</code> otherwise.</div></li><li><div class="item-name"><a class="fn" href="fn.ensure_signed.html" title="fn lending::ensure_signed">ensure_signed</a></div><div class="desc docblock-short">Ensure that the origin <code>o</code> represents a signed extrinsic (i.e. transaction).
+Returns <code>Ok</code> with the account that signed the extrinsic or an <code>Err</code> otherwise.</div></li><li><div class="item-name"><a class="fn" href="fn.ensure_signed_or_root.html" title="fn lending::ensure_signed_or_root">ensure_signed_or_root</a></div><div class="desc docblock-short">Ensure that the origin <code>o</code> represents either a signed extrinsic (i.e. transaction) or the root.
+Returns <code>Ok</code> with the account that signed the extrinsic, <code>None</code> if it was root,  or an <code>Err</code>
+otherwise.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.AccountOf.html" title="type lending::AccountOf">AccountOf</a></div><div class="desc docblock-short">Account Type Definition</div></li><li><div class="item-name"><a class="type" href="type.AssetBalanceOf.html" title="type lending::AssetBalanceOf">AssetBalanceOf</a></div><div class="desc docblock-short">Fungible Balance</div></li><li><div class="item-name"><a class="type" href="type.AssetIdOf.html" title="type lending::AssetIdOf">AssetIdOf</a></div><div class="desc docblock-short">Fungible Asset Id</div></li><li><div class="item-name"><a class="type" href="type.BalanceOf.html" title="type lending::BalanceOf">BalanceOf</a></div><div class="desc docblock-short">Native Balance</div></li><li><div class="item-name"><a class="type" href="type.BlockNumberFor.html" title="type lending::BlockNumberFor">BlockNumberFor</a></div><div class="desc docblock-short">Type alias for the <code>BlockNumber</code> associated type of system config.</div></li><li><div class="item-name"><a class="type" href="type.DispatchResult.html" title="type lending::DispatchResult">DispatchResult</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.DispatchResultWithPostInfo.html" title="type lending::DispatchResultWithPostInfo">DispatchResultWithPostInfo</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.HeaderFor.html" title="type lending::HeaderFor">HeaderFor</a></div><div class="desc docblock-short">Type alias for the <code>Header</code>.</div></li><li><div class="item-name"><a class="type" href="type.InherentIdentifier.html" title="type lending::InherentIdentifier">InherentIdentifier</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.LendingPoolId.html" title="type lending::LendingPoolId">LendingPoolId</a></div></li><li><div class="item-name"><a class="type" href="type.OriginFor.html" title="type lending::OriginFor">OriginFor</a></div><div class="desc docblock-short">Type alias for the <code>Origin</code> associated type of system config.</div></li><li><div class="item-name"><a class="type" href="type.Rate.html" title="type lending::Rate">Rate</a></div></li><li><div class="item-name"><a class="type" href="type.Ratio.html" title="type lending::Ratio">Ratio</a></div></li><li><div class="item-name"><a class="type" href="type.Timestamp.html" title="type lending::Timestamp">Timestamp</a></div></li><li><div class="item-name"><a class="type" href="type.TransactionLongevity.html" title="type lending::TransactionLongevity">TransactionLongevity</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.TransactionPriority.html" title="type lending::TransactionPriority">TransactionPriority</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.TransactionTag.html" title="type lending::TransactionTag">TransactionTag</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="type" href="type.TransactionValidity.html" title="type lending::TransactionValidity">TransactionValidity</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul><h2 id="attributes" class="section-header">Attribute Macros<a href="#attributes" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="attr" href="attr.call_index.html" title="attr lending::call_index">call_index</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.compact.html" title="attr lending::compact">compact</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.composite_enum.html" title="attr lending::composite_enum">composite_enum</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.config.html" title="attr lending::config">config</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.constant.html" title="attr lending::constant">constant</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.disable_frame_system_supertrait_check.html" title="attr lending::disable_frame_system_supertrait_check">disable_frame_system_supertrait_check</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.error.html" title="attr lending::error">error</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.event.html" title="attr lending::event">event</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.extra_constants.html" title="attr lending::extra_constants">extra_constants</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.generate_deposit.html" title="attr lending::generate_deposit">generate_deposit</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.generate_store.html" title="attr lending::generate_store">generate_store</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.genesis_build.html" title="attr lending::genesis_build">genesis_build</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.genesis_config.html" title="attr lending::genesis_config">genesis_config</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.getter.html" title="attr lending::getter">getter</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.hooks.html" title="attr lending::hooks">hooks</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.import_section.html" title="attr lending::import_section">import_section</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.inherent.html" title="attr lending::inherent">inherent</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.no_default.html" title="attr lending::no_default">no_default</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.origin.html" title="attr lending::origin">origin</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.pallet_section.html" title="attr lending::pallet_section">pallet_section</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.register_default_impl.html" title="attr lending::register_default_impl">register_default_impl</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.storage.html" title="attr lending::storage">storage</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.storage_prefix.html" title="attr lending::storage_prefix">storage_prefix</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.storage_version.html" title="attr lending::storage_version">storage_version</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.type_value.html" title="attr lending::type_value">type_value</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.unbounded.html" title="attr lending::unbounded">unbounded</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.validate_unsigned.html" title="attr lending::validate_unsigned">validate_unsigned</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.weight.html" title="attr lending::weight">weight</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="attr" href="attr.whitelist_storage.html" title="attr lending::whitelist_storage">whitelist_storage</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul><h2 id="derives" class="section-header">Derive Macros<a href="#derives" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="derive" href="derive.CloneNoBound.html" title="derive lending::CloneNoBound">CloneNoBound</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.DebugNoBound.html" title="derive lending::DebugNoBound">DebugNoBound</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.Decode.html" title="derive lending::Decode">Decode</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.DefaultNoBound.html" title="derive lending::DefaultNoBound">DefaultNoBound</a></div><div class="desc docblock-short">derive <code>Default</code> but do no bound any generic. Docs are at <code>frame_support::DefaultNoBound</code>.</div></li><li><div class="item-name"><a class="derive" href="derive.Encode.html" title="derive lending::Encode">Encode</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.EqNoBound.html" title="derive lending::EqNoBound">EqNoBound</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.MaxEncodedLen.html" title="derive lending::MaxEncodedLen">MaxEncodedLen</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.PartialEqNoBound.html" title="derive lending::PartialEqNoBound">PartialEqNoBound</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.RuntimeDebug.html" title="derive lending::RuntimeDebug">RuntimeDebug</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.RuntimeDebugNoBound.html" title="derive lending::RuntimeDebugNoBound">RuntimeDebugNoBound</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li><li><div class="item-name"><a class="derive" href="derive.TypeInfo.html" title="derive lending::TypeInfo">TypeInfo</a></div><div class="desc docblock-short">! # The Lending pallet of Kylix
+!
+! ## Overview
+!
+! The Lending pallet is responsible for managing the lending pools and the treasury
+operations. !
+! The lending pallet adopts a protocol similar to Compound V2 for its lending operations,
+! offering a pool-based approach to aggregate assets from all users.
+!
+! Interest rates adjust dynamically in response to the supply and demand conditions.
+! Additionally, for every lending positions a new token is minted, thus enabling the
+transfer of ! ownership.
+!
+! Implemented Extrinsics:
+!
+! 0. create_lending_pool()
+! 1. activate_lending_pool()
+! 2. supply()
+! 3. withdraw()
+! 4. borrow()
+! 5. repay()
+! 6. claim_rewards()
+! 7. deactivate_lending_pool()
+! 8. update_pool_rate_model()
+! 9. update_pool_kink()
+!</div></li></ul></section></div></main></body></html>

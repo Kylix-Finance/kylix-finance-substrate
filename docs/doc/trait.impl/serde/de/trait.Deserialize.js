@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"lending":[["impl&lt;'de, T: <a class=\"trait\" href=\"lending/pallet/trait.Config.html\" title=\"trait lending::pallet::Config\">Config</a>&gt; <a class=\"trait\" href=\"https://docs.rs/serde/1.0.199/serde/de/trait.Deserialize.html\" title=\"trait serde::de::Deserialize\">Deserialize</a>&lt;'de&gt; for <a class=\"struct\" href=\"lending/pallet/struct.GenesisConfig.html\" title=\"struct lending::pallet::GenesisConfig\">GenesisConfig</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
