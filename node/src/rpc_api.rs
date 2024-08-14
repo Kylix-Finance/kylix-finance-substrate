@@ -27,4 +27,8 @@ pub struct AggregatedTotals {
 pub trait LendingPoolApi {
     #[method(name = "getLendingPools")]
     async fn get_lending_pools(&self) -> Result<(Vec<LendingPoolInfo>, AggregatedTotals), jsonrpsee::core::Error>;
-} // returns a list of LendingPoolInfo
+
+    // takes a pool_id as input and returns the information for a single pool
+    #[method(name = "getLendingPool")]
+    async fn get_lending_pool(&self, pool_id: u32) -> Result<LendingPoolInfo, jsonrpsee::core::Error>;
+} 

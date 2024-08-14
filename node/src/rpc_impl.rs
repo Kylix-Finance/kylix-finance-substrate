@@ -65,6 +65,35 @@ impl LendingPoolApiServer for LendingPoolRpcImpl {
         
         Ok((pools, aggregated_totals))
     }
+
+    async fn get_lending_pool(&self, pool_id: u32) -> Result<Vec<LendingPoolInfo>, jsonrpsee::core::Error> {
+        // Replace this mock data with actual storage retrieval
+        let pool_data = match pool_id {
+            1 => LendingPoolInfo { 
+                id: 1, 
+                asset: "TokenA".to_string(), 
+                collateral_q: 50.0, 
+                utilization: 60.0, 
+                borrow_apy: 5.0, 
+                supply_apy: 2.0, 
+                collateral: true, 
+                balance: 1000 
+            },
+            2 => LendingPoolInfo { 
+                id: 2, 
+                asset: "TokenB".to_string(), 
+                collateral_q: 70.0, 
+                utilization: 80.0, 
+                borrow_apy: 6.0, 
+                supply_apy: 3.0, 
+                collateral: true, 
+                balance: 2000 
+            },
+            
+            _ => return Err(jsonrpsee::core::Error::Custom("Pool not found".to_string())),
+        };
+        Ok(pool_data)
+    }
 }
 
 impl LendingPoolRpcImpl {
