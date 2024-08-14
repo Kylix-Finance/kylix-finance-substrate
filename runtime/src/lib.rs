@@ -333,7 +333,6 @@ pub struct LendingPoolInfo {
     pub utilization: FixedU64,
     pub borrow_apy: FixedU128,
     pub supply_apy: FixedU128,
-    pub collateral: bool,
 	pub is_activated: bool,
     pub balance: u128,
 }
@@ -660,10 +659,22 @@ impl_runtime_apis! {
 
 					// Calculate the balance=reserve_balance+borrowed_balance
 					let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
-
+					
+					let equivalent_asset_supply_amount = lending::Pallet::<Runtime>::get_equivalent_asset_amount(
+						pool.lend_token_id,
+						1, //USDT
+						pool.reserve_balance,
+					).unwrap_or_default()
+					;
+					let equivalent_asset_borrow_amount = lending::Pallet::<Runtime>::get_equivalent_asset_amount(
+						pool.lend_token_id,
+						1, //USDT
+						pool.borrowed_balance,
+					).unwrap_or_default();
+					
 					// Accumulate totals
-					total_supply = total_supply.saturating_add(balance);
-					total_borrow = total_borrow.saturating_add(pool.borrowed_balance.saturated_into::<u128>());
+					total_supply = total_supply.saturating_add(equivalent_asset_supply_amount);
+					total_borrow = total_borrow.saturating_add(equivalent_asset_borrow_amount);
 
 					LendingPoolInfo {
 						id: pool.id,
@@ -673,9 +684,8 @@ impl_runtime_apis! {
 						asset_symbol: asset_symbol,
 						collateral_q: pool.collateral_factor.deconstruct().into(),
 						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
-						borrow_apy: pool.borrow_rate.into(),
-						supply_apy: pool.supply_rate.into(),
-						collateral: true, // TODO: hardcoded, resolve
+						borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
+						supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
 						is_activated: pool.activated,
 						balance,
 					}
