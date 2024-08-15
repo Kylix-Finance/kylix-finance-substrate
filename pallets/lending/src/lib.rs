@@ -1371,7 +1371,6 @@ pub mod pallet {
 			// check sufficiency of collateral asset
 			// get collateral asset value in terms of borrow-asset
 			let equivalent_asset_balance = Self::get_equivalent_asset_amount(
-				who,
 				asset,
 				collateral_asset,
 				collateral_balance,
@@ -1592,8 +1591,7 @@ pub mod pallet {
 		/// return `collateral_asset_price * collateral_balance / asset_price`
 		/// else
 		/// return error `AssetPriceNotSet`
-		fn get_equivalent_asset_amount(
-			_who: &T::AccountId,
+		pub fn get_equivalent_asset_amount(
 			asset: AssetIdOf<T>,
 			collateral_asset: AssetIdOf<T>,
 			collateral_balance: AssetBalanceOf<T>,
