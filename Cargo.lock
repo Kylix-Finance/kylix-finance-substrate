@@ -3132,6 +3132,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "log",
+ "num-traits",
  "pallet-assets",
  "pallet-balances",
  "pallet-timestamp",

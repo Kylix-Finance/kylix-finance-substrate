@@ -37,15 +37,13 @@ pub use borrow_repay::UserBorrow;
 ///! Use case
 pub use frame_support::{
 	pallet_prelude::*,
-	sp_runtime::{FixedU128, Permill, SaturatedConversion},
-	traits::{fungible, fungibles},
-};
-pub use frame_support::{
 	sp_runtime,
-	sp_runtime::traits::{
-		AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero,
+	sp_runtime::{
+		traits::{AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
+		FixedPointNumber, FixedU128, Permill, SaturatedConversion,
 	},
 	traits::{
+		fungible, fungibles,
 		fungibles::{Create, Inspect, Mutate},
 		tokens::{Fortitude, Precision, Preservation},
 		Time as MomentTime,
@@ -53,8 +51,8 @@ pub use frame_support::{
 	DefaultNoBound, PalletId,
 };
 pub use frame_system::pallet_prelude::*;
+pub use interest_rate::InterestRateModel;
 pub use pallet::*;
-pub use sp_runtime::FixedPointNumber;
 
 /// Account Type Definition
 pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -77,6 +75,7 @@ pub type LendingPoolId = u32;
 pub const SECONDS_PER_YEAR: u64 = 365u64 * 24 * 60 * 60;
 
 mod borrow_repay;
+mod interest_rate;
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -145,52 +144,6 @@ pub mod pallet {
 		}
 	}
 
-	// let's hardcore a default interest rate model (the same AAVE has)
-	#[derive(
-		Clone,
-		Encode,
-		Decode,
-		Eq,
-		PartialEq,
-		RuntimeDebug,
-		MaxEncodedLen,
-		TypeInfo,
-		PartialOrd,
-		DefaultNoBound,
-	)]
-	#[scale_info(skip_type_params(T))]
-	pub struct InterestRateModel {
-		base_rate: Rate,
-		slope1: Rate,
-		slope2: Rate,
-		kink: Rate,
-	}
-	impl InterestRateModel {
-		/// Default interest rate model.
-		/// TODO: change to a dynamic model defined by the pool creator
-		pub fn hardcoded_default_interest() -> Self {
-			InterestRateModel {
-				base_rate: Rate::saturating_from_rational(2, 100),
-				slope1: Rate::saturating_from_rational(4, 100),
-				slope2: Rate::saturating_from_rational(75, 100),
-				kink: Rate::saturating_from_rational(80, 100),
-			}
-		}
-
-		pub fn base_rate(&self) -> Rate {
-			self.base_rate
-		}
-		pub fn slope1(&self) -> Rate {
-			self.slope1
-		}
-		pub fn slope2(&self) -> Rate {
-			self.slope2
-		}
-		pub fn kink(&self) -> Rate {
-			self.kink
-		}
-	}
-
 	/// Definition of the Lending Pool Reserve Entity
 	///
 	/// A struct to hold the LendingPool and all its properties,
@@ -255,7 +208,7 @@ pub mod pallet {
 
 				activated: false,
 
-				interest_model: InterestRateModel::hardcoded_default_interest(),
+				interest_model: InterestRateModel::default(),
 				reserve_factor: Ratio::from_percent(10), // Default reserve factor at 10%
 				borrow_rate: Ratio::from_percent(20),    // Default 0.20 as borrow rate ratio
 
@@ -288,62 +241,17 @@ pub mod pallet {
 			Ok(Ratio::from_rational(self.borrowed_balance, denominator))
 		}
 
-		///
-		/// The BORROW interest rate model calculated as
-		///
-		/// if (utilisation_ratio <= kink)
-		/// 	base_rate + (utilization_ratio/kink) * slope1
-		///
-		/// if (utilisation_ratio > kink)
-		/// 	base_rate + slope1 + ((utilisation_ratio - kink)/(1 - kink)) * slope2
 		pub fn borrow_interest_rate(&self) -> Result<Rate, Error<T>> {
 			if self.borrowed_balance.is_zero() || self.reserve_balance.is_zero() {
 				return Ok(Rate::zero());
 			}
 
 			let utilisation_ratio = self.utilisation_ratio()?;
-
-			let base = self.interest_model.base_rate();
-			let slope1 = self.interest_model.slope1();
-			let slope2 = self.interest_model.slope2();
-			let kink = self.interest_model.kink();
-
 			let utilisation_ratio: Rate = utilisation_ratio.into();
 
-			if utilisation_ratio <= kink {
-				let res = utilisation_ratio
-					.checked_div(&kink)
-					.ok_or(Error::<T>::OverflowError)?
-					.checked_mul(&slope1)
-					.ok_or(Error::<T>::OverflowError)?;
-
-				let borrow_rate = base.checked_add(&res).ok_or(Error::<T>::OverflowError)?;
-
-				return Ok(borrow_rate);
-			}
-
-			// utilisation_ratio > kink
-
-			let numerator =
-				utilisation_ratio.checked_sub(&kink).ok_or(Error::<T>::OverflowError)?;
-
-			let denominator = Rate::saturating_from_rational(100, 100) // 100%_
-				.checked_sub(&kink)
-				.ok_or(Error::<T>::OverflowError)?;
-
-			let partial = slope2
-				.checked_mul(&numerator)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(&denominator)
-				.ok_or(Error::<T>::OverflowError)?;
-
-			let ut = base
-				.checked_add(&slope1)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_mul(&partial)
-				.ok_or(Error::<T>::OverflowError)?;
-
-			Ok(ut)
+			self.interest_model
+				.calculate_cosine_interest(utilisation_ratio)
+				.map_err(|_| Error::<T>::OverflowError.into())
 		}
 
 		///
@@ -1370,11 +1278,8 @@ pub mod pallet {
 
 			// check sufficiency of collateral asset
 			// get collateral asset value in terms of borrow-asset
-			let equivalent_asset_balance = Self::get_equivalent_asset_amount(
-				asset,
-				collateral_asset,
-				collateral_balance,
-			)?;
+			let equivalent_asset_balance =
+				Self::get_equivalent_asset_amount(asset, collateral_asset, collateral_balance)?;
 			// get eligible borrow quantity based on reserve_factor
 			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balance)?;
 			// error if borrow is more than eligibility
