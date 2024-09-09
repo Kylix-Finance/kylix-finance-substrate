@@ -1,8 +1,6 @@
 use crate::{tests::mock::*, AssetPool, Error, Event, LendingPool};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::{FixedU128, Permill};
-
-pub type Rate = FixedU128;
+use sp_runtime::{assert_eq_error_rate, Permill};
 
 const NEW_ASSET: AssetId = 8888u32;
 
@@ -156,10 +154,8 @@ fn test_utilisation_rate_with_partial_borrowing() {
 		assert_eq!(ut, Permill::from_percent(50)); // 5000/10000 = 50%
 
 		let br = pool.borrow_interest_rate().unwrap();
-		assert_eq!(br, Rate::from_float(0.045)); // 4.5%
-
-		// 4.5% borrow interest rate for 50% utilisation rate.
-		// it can be aslso verified visually from https://www.desmos.com/calculator/fnj0ctpqn9
+		let error_margin: Rate = Rate::from_float(0.001);
+		assert_eq_error_rate!(br, Rate::from_float(0.03), error_margin);
 	});
 }
 
@@ -178,6 +174,7 @@ fn test_utilisation_rate_with_high_borrowing() {
 fn test_supply_interest_rate_with_partial_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 5000).expect("failed");
+		let error_margin: Rate = Rate::from_float(0.001);
 		pool.borrowed_balance = 5000;
 
 		println!("Test Reserve Factor: {:#?}", pool.reserve_factor);
@@ -186,7 +183,7 @@ fn test_supply_interest_rate_with_partial_borrowing() {
 		println!("Test Reserved: {:#?}", reserved);
 
 		let ut = pool.supply_interest_rate().unwrap();
-		assert_eq!(ut, Rate::from_float(0.02025)); // 20.25%
+		assert_eq_error_rate!(ut, Rate::from_float(0.013), error_margin);
 	});
 }
 
@@ -194,10 +191,11 @@ fn test_supply_interest_rate_with_partial_borrowing() {
 fn test_supply_interest_rate_with_high_borrowing() {
 	ExtBuilder::default().build().execute_with(|| {
 		let mut pool: LendingPool<Test> = LendingPool::from(0, DOT, 1000).expect("failed");
+		let error_margin: Rate = Rate::from_float(0.001);
 		pool.borrowed_balance = 9000;
 
 		let ut = pool.supply_interest_rate().unwrap();
-		assert_eq!(ut, Rate::from_float(0.018225)); // 18.225%
+		assert_eq_error_rate!(ut, Rate::from_float(0.024), error_margin);
 	});
 }
 

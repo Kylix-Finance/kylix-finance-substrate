@@ -10,7 +10,7 @@ use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-	BuildStorage,
+	BuildStorage, FixedU128,
 };
 use std::{cell::RefCell, collections::HashSet};
 
@@ -25,6 +25,7 @@ pub const BOB: AccountId = 3;
 pub const DOT: AssetId = 1u32;
 pub const KSM: AssetId = 2u32;
 pub const LENDING_POOL_TOKEN: AssetId = 99999u32;
+pub type Rate = FixedU128;
 
 thread_local! {
 	pub static ENDOWED_BALANCES: RefCell<Vec<(AssetId, AccountId, Balance)>> = RefCell::new(Vec::new());
