@@ -6,6 +6,13 @@ use substrate_fixed::{
 	types::I64F64,
 };
 
+fn round_to_6_decimals(value: FixedU128) -> FixedU128 {
+	let scale = 1_000_000; // 10^6 for 6 decimal places
+	let scaled = value.into_inner();
+	let rounded = (scaled + scale / 2) / scale * scale;
+	FixedU128::from_inner(rounded)
+}
+
 #[derive(
 	Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd,
 )]
@@ -66,7 +73,8 @@ impl InterestRateModel {
 		let result: I64F64 = (term1 + term2 + term3) / I64F64::from_num(2);
 
 		// Convert back to Rate (FixedU128)
-		Ok(Rate::from_inner(result.to_num::<u128>()))
+		let rounded = round_to_6_decimals(Rate::from_inner(result.to_num::<u128>()));
+		Ok(rounded.clamp(self.ym, self.y0))
 	}
 }
 

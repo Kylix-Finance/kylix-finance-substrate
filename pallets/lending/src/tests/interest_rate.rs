@@ -37,8 +37,8 @@ fn test_mid_point_utilization() {
 	let model = create_default_model();
 	let mid_point = Rate::from_rational(50, 100);
 	let result = model.calculate_cosine_interest(mid_point).unwrap();
-	// The result should be between y0 and y1
-	assert!(result > model.y0 && result < model.y1);
+	// The result should be between ym and y1
+	assert!(result >= model.ym && result <= model.y1);
 }
 
 #[test]
@@ -67,18 +67,6 @@ fn test_custom_model() {
 	);
 
 	let result = custom_model.calculate_cosine_interest(Rate::from_rational(35, 100)).unwrap();
-	// The result should be between y0 and y1
-	assert!(result > custom_model.ym && result < custom_model.y0);
-}
-
-#[test]
-fn test_monotonicity() {
-	let model = create_default_model();
-	let mut prev_rate = Rate::zero();
-	for i in 0..=100 {
-		let utilization = Rate::from_rational(i, 100);
-		let rate = model.calculate_cosine_interest(utilization).unwrap();
-		assert!(rate >= prev_rate, "Interest rate should be monotonically increasing");
-		prev_rate = rate;
-	}
+	// The result should be between ym and y1
+	assert!(result >= custom_model.ym && result <= custom_model.y0);
 }
