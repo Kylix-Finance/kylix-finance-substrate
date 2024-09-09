@@ -1,8 +1,6 @@
 use crate::{tests::mock::*, AssetPool, Error, Event, LendingPool};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::{FixedU128, Permill};
-
-pub type Rate = FixedU128;
+use sp_runtime::Permill;
 
 const NEW_ASSET: AssetId = 8888u32;
 
