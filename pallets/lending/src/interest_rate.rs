@@ -1,126 +1,28 @@
 use crate::*;
-use num_traits::{
-	bounds::{LowerBounded, UpperBounded},
-	One,
+use num_traits::One;
+use substrate_fixed::{
+	transcendental::{cos, exp, ln, log2, pow},
+	types::I64F64,
 };
 
-fn log2_approx(x: FixedU128) -> FixedU128 {
-	if x <= FixedU128::zero() {
-		return FixedU128::zero(); // or handle error
-	}
-
-	let mut result = FixedU128::zero();
-	let mut x = x;
-	let two = FixedU128::from_inner(2u128 << 64);
-
-	while x >= two {
-		result = result.checked_add(&FixedU128::one()).unwrap_or(FixedU128::max_value());
-		x = x.checked_div(&two).unwrap_or(FixedU128::zero());
-	}
-
-	let one = FixedU128::one();
-	let mut y = one;
-
-	for _ in 0..64 {
-		y = y.checked_div(&two).unwrap_or(FixedU128::zero());
-		if x >= one.checked_add(&y).unwrap_or(FixedU128::max_value()) {
-			x = x
-				.checked_div(&one.checked_add(&y).unwrap_or(FixedU128::max_value()))
-				.unwrap_or(FixedU128::zero());
-			result = result.checked_add(&y).unwrap_or(FixedU128::max_value());
-		}
-	}
-
-	result
+fn to_i64f64(x: FixedU128) -> I64F64 {
+	I64F64::from_num(x.into_inner())
 }
 
-// Exponential function approximation using Taylor series
-fn exp_approx(x: FixedU128) -> FixedU128 {
-	let mut result = FixedU128::one();
-	let mut term = FixedU128::one();
-	let mut n = FixedU128::one();
-
-	for _ in 1..10 {
-		// Adjust the number of iterations for desired precision
-		term = term
-			.checked_mul(&x)
-			.unwrap_or(FixedU128::zero())
-			.checked_div(&n)
-			.unwrap_or(FixedU128::zero());
-		result = result.checked_add(&term).unwrap_or(FixedU128::max_value());
-		n = n.checked_add(&FixedU128::one()).unwrap_or(FixedU128::max_value());
-	}
-
-	result
+fn to_fixedu128(x: I64F64) -> FixedU128 {
+	FixedU128::from_inner(x.to_num::<u128>())
 }
 
-// Natural logarithm approximation using Taylor series
-fn ln_approx(x: FixedU128) -> FixedU128 {
-	if x <= FixedU128::zero() {
-		return FixedU128::min_value(); // or handle error
-	}
-
-	let y = (x - FixedU128::one()) / (x + FixedU128::one());
-	let mut result = FixedU128::zero();
-	let mut term = y;
-	let two = FixedU128::from_inner(2u128 << 64);
-
-	for n in 1..10 {
-		// Adjust the number of iterations for desired precision
-		result = result
-			.checked_add(&(term / FixedU128::from_u32(2 * n - 1)))
-			.unwrap_or(FixedU128::max_value());
-		term = term
-			.checked_mul(&y)
-			.unwrap_or(FixedU128::zero())
-			.checked_mul(&y)
-			.unwrap_or(FixedU128::zero());
-	}
-
-	result.checked_mul(&two).unwrap_or(FixedU128::max_value())
+fn log2_approx(x: FixedU128) -> Result<FixedU128, &'static str> {
+	log2(to_i64f64(x)).map(to_fixedu128).map_err(|_| "Log2 error")
 }
 
-fn pow_approx(base: FixedU128, exp: FixedU128) -> FixedU128 {
-	if base == FixedU128::zero() {
-		return if exp == FixedU128::zero() { FixedU128::one() } else { FixedU128::zero() };
-	}
-
-	exp_approx(ln_approx(base).checked_mul(&exp).unwrap_or(FixedU128::zero()))
+fn pow_approx(base: FixedU128, exp: FixedU128) -> Result<FixedU128, &'static str> {
+	pow(to_i64f64(base), to_i64f64(exp)).map(to_fixedu128).map_err(|_| "Pow error")
 }
 
-fn cos_approx(mut x: FixedU128) -> FixedU128 {
-	let pi = FixedU128::from_inner(3_141592653589793238u128);
-	let two_pi = pi.checked_mul(&FixedU128::from_u32(2)).unwrap_or(FixedU128::max_value());
-
-	// Normalize x to be between 0 and 2π
-	while x > two_pi {
-		x = x.checked_sub(&two_pi).unwrap_or(FixedU128::zero());
-	}
-	while x < FixedU128::zero() {
-		x = x.checked_add(&two_pi).unwrap_or(FixedU128::max_value());
-	}
-
-	let mut result = FixedU128::one();
-	let mut term = FixedU128::one();
-	let mut n = FixedU128::zero();
-	let neg_one = FixedU128::from_inner(u128::MAX); // -1 in FixedU128
-
-	for _ in 1..10 {
-		// Adjust the number of iterations for desired precision
-		n = n.checked_add(&FixedU128::from_u32(2)).unwrap_or(FixedU128::max_value());
-		term = term
-			.checked_mul(&x)
-			.unwrap_or(FixedU128::zero())
-			.checked_mul(&x)
-			.unwrap_or(FixedU128::zero())
-			.checked_div(&(n * (n - FixedU128::one())))
-			.unwrap_or(FixedU128::zero())
-			.checked_mul(&neg_one)
-			.unwrap_or(FixedU128::zero());
-		result = result.checked_add(&term).unwrap_or(FixedU128::max_value());
-	}
-
-	result
+fn cos_approx(x: FixedU128) -> FixedU128 {
+	to_fixedu128(cos(to_i64f64(x)))
 }
 
 #[derive(
@@ -147,7 +49,7 @@ impl InterestRateModel {
 		let pi = Rate::from_inner(3_141592653589793238u128); // π
 
 		// Calculate n = -1 / log2(xm)
-		let log2_xm = log2_approx(self.xm);
+		let log2_xm = log2_approx(self.xm)?;
 		let n = FixedU128::one()
 			.checked_div(&log2_xm)
 			.ok_or("Division by zero")?
@@ -155,7 +57,7 @@ impl InterestRateModel {
 			.ok_or("Multiplication overflow")?;
 
 		// Calculate x^n
-		let x_pow_n = pow_approx(utilization, n);
+		let x_pow_n = pow_approx(utilization, n)?;
 
 		// Calculate cos(2πx^n)
 		let cos_term = cos_approx(
