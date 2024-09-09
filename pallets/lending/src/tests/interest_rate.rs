@@ -68,7 +68,7 @@ fn test_custom_model() {
 
 	let result = custom_model.calculate_cosine_interest(Rate::from_rational(35, 100)).unwrap();
 	// The result should be between y0 and y1
-	assert!(result > custom_model.y0 && result < custom_model.y1);
+	assert!(result > custom_model.ym && result < custom_model.y0);
 }
 
 #[test]
