@@ -1,57 +1,10 @@
 use crate::*;
-use num_traits::{
-	bounds::{LowerBounded, UpperBounded},
-	One,
-};
-use sp_runtime::FixedU128;
+use core::f64::consts::PI;
+use num_traits::One;
 use substrate_fixed::{
 	transcendental::{cos, log2, pow},
 	types::I64F64,
 };
-
-fn to_i64f64(x: FixedU128) -> I64F64 {
-	I64F64::from_num(x.into_inner())
-}
-
-fn to_fixedu128(x: I64F64) -> FixedU128 {
-	FixedU128::from_inner(x.to_num::<u128>())
-}
-
-fn log2_approx(x: FixedU128) -> Result<FixedU128, &'static str> {
-	if x.is_zero() {
-		return Err("Log of zero is undefined");
-	}
-	if x == FixedU128::one() {
-		return Ok(FixedU128::zero());
-	}
-	log2(to_i64f64(x)).map(to_fixedu128).map_err(|_| "Log2 error")
-}
-
-fn pow_approx(base: FixedU128, exp: FixedU128) -> Result<FixedU128, &'static str> {
-	if base.is_zero() && exp.is_zero() {
-		return Ok(FixedU128::one());
-	}
-	if base.is_zero() {
-		return Ok(FixedU128::zero());
-	}
-	if exp.is_zero() {
-		return Ok(FixedU128::one());
-	}
-	if exp > FixedU128::from(1000u128) {
-		return if base > FixedU128::one() {
-			Ok(FixedU128::max_value())
-		} else if base < FixedU128::one() {
-			Ok(FixedU128::min_value())
-		} else {
-			Ok(FixedU128::one())
-		};
-	}
-	pow(to_i64f64(base), to_i64f64(exp)).map(to_fixedu128).map_err(|_| "Pow error")
-}
-
-fn cos_approx(x: FixedU128) -> FixedU128 {
-	to_fixedu128(cos(to_i64f64(x)))
-}
 
 #[derive(
 	Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo, PartialOrd,
@@ -79,54 +32,41 @@ impl InterestRateModel {
 			return Ok(self.y1);
 		}
 
-		let two = Rate::from_rational(2, 1);
-		let pi = Rate::from_inner(3_141592653589793238u128); // π
+		let y0 = I64F64::from_num(self.y0.into_inner());
+		let y1 = I64F64::from_num(self.y1.into_inner());
+		let xm = I64F64::from_num(self.xm.into_inner());
+		let ym = I64F64::from_num(self.ym.into_inner());
+		let utilization = I64F64::from_num(utilization.into_inner());
 
 		// Calculate n = -1 / log2(xm)
-		let log2_xm = log2_approx(self.xm)?;
-		let n = FixedU128::one()
-			.checked_div(&log2_xm)
-			.ok_or("Division by zero")?
-			.checked_mul(&FixedU128::from_inner(u128::MAX))
-			.ok_or("Multiplication overflow")?;
+		let log2_xm: I64F64 = log2(xm).map_err(|_| "Logarithm calculation failed")?;
+		let n = I64F64::from_num(-1) / log2_xm;
 
 		// Calculate X = 2π * x^(-1/log2(xm))
-		let x_pow_n = pow_approx(utilization, n)?;
-		let x = two
-			.checked_mul(&pi)
-			.and_then(|v| v.checked_mul(&x_pow_n))
-			.ok_or("Multiplication overflow")?;
+		let pi = I64F64::from_num(PI);
+		let two_pi = pi * I64F64::from_num(2);
+		let x_pow_n: I64F64 = pow(utilization, n).map_err(|_| "Power error")?;
+		let x = two_pi * x_pow_n;
 
 		// Calculate cos(X)
-		let cos_x = cos_approx(x);
+		let cos_x = cos(x);
 
 		// Heaviside function
-		let heaviside = if utilization > self.xm { Rate::one() } else { Rate::zero() };
+		let heaviside = if utilization > xm { I64F64::from_num(1) } else { I64F64::from_num(0) };
 
 		// Calculate the interest rate
-		let one_plus_cos = Rate::one().checked_add(&cos_x).ok_or("Addition overflow")?;
-		let one_minus_cos = Rate::one().checked_sub(&cos_x).ok_or("Subtraction overflow")?;
+		let one = I64F64::from_num(1);
+		let one_plus_cos = one + cos_x;
+		let one_minus_cos = one - cos_x;
 
-		let term1 = self
-			.y0
-			.checked_mul(&one_plus_cos)
-			.and_then(|v| v.checked_mul(&(Rate::one() - heaviside)))
-			.ok_or("Multiplication overflow")?;
+		let term1 = y0 * one_plus_cos * (one - heaviside);
+		let term2 = y1 * one_plus_cos * heaviside;
+		let term3 = ym * one_minus_cos;
 
-		let term2 = self
-			.y1
-			.checked_mul(&one_plus_cos)
-			.and_then(|v| v.checked_mul(&heaviside))
-			.ok_or("Multiplication overflow")?;
+		let result: I64F64 = (term1 + term2 + term3) / I64F64::from_num(2);
 
-		let term3 = self.ym.checked_mul(&one_minus_cos).ok_or("Multiplication overflow")?;
-
-		let result = term1
-			.checked_add(&term2)
-			.and_then(|v| v.checked_add(&term3))
-			.ok_or("Addition overflow")?;
-
-		Ok(result.checked_div(&two).ok_or("Division by zero")?)
+		// Convert back to Rate (FixedU128)
+		Ok(Rate::from_inner(result.to_num::<u128>()))
 	}
 }
 
