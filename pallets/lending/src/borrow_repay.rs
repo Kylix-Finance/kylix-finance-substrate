@@ -19,6 +19,7 @@ pub struct UserBorrow<T: Config> {
 	pub borrowed_balance: AssetBalanceOf<T>,
 	pub collateral_asset: AssetIdOf<T>,
 	pub collateral_balance: AssetBalanceOf<T>,
+	pub borrow_index_at_borrow_time: Rate,
 }
 
 impl<T: Config> UserBorrow<T> {
