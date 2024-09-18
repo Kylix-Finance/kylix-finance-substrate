@@ -70,3 +70,11 @@ fn test_custom_model() {
 	// The result should be between ym and y1
 	assert!(result >= custom_model.ym && result <= custom_model.y0);
 }
+
+#[test]
+fn test_calculate_cosine_interest() {
+	let model = InterestRateModel::default();
+	let utilization = Rate::from_rational(3333, 10000); // 33.33%
+	let interest_rate = model.calculate_cosine_interest(utilization).unwrap();
+	assert!(interest_rate > Rate::zero());
+}

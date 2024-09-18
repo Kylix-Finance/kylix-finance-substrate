@@ -3,7 +3,9 @@ use crate::{AssetBalanceOf, AssetIdOf, BalanceOf};
 pub type Fungibles = <Test as crate::Config>::Fungibles;
 use frame_support::{
 	assert_ok, derive_impl, parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, ConstU64},
+	traits::{
+		AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, ConstU64, OnFinalize, OnInitialize,
+	},
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -26,6 +28,7 @@ pub const DOT: AssetId = 1u32;
 pub const KSM: AssetId = 2u32;
 pub const LENDING_POOL_TOKEN: AssetId = 99999u32;
 pub type Rate = FixedU128;
+const BLOCK_TIME_MS: u64 = 6_000; // 6 seconds per block in milliseconds
 
 thread_local! {
 	pub static ENDOWED_BALANCES: RefCell<Vec<(AssetId, AccountId, Balance)>> = RefCell::new(Vec::new());
@@ -189,4 +192,14 @@ pub fn setup_active_pool(asset: AssetIdOf<Test>, initial_balance: BalanceOf<Test
 pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
 	let pallet_account: AccountId = KylixPalletId::get().into_account_truncating();
 	return Fungibles::balance(asset, pallet_account);
+}
+
+pub fn run_to_block(n: u64) {
+	while System::block_number() < n {
+		TemplateModule::on_finalize(System::block_number());
+		System::set_block_number(System::block_number() + 1);
+		Timestamp::set_timestamp(Timestamp::get() + BLOCK_TIME_MS);
+
+		TemplateModule::on_initialize(System::block_number());
+	}
 }

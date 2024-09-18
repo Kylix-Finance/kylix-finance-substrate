@@ -13,7 +13,6 @@ repository = "https://github.com/substrate-developer-hub/substrate-node-template
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-log = "0.4"
 codec = { package = "parity-scale-codec", version = "3.6.1", default-features = false, features = [
     "derive",
 ] }
@@ -29,6 +28,7 @@ frame-try-runtime = { version = "0.10.0-dev", default-features = false, git = "h
 pallet-timestamp = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0" }
 num-traits = { default-features = false, version = "0.2.14" }
 substrate-fixed = "0.5.9"
+log = { version = "0.4.22", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "21.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0" }
@@ -46,6 +46,7 @@ std = [
     "frame-benchmarking?/std",
     "frame-support/std",
     "frame-system/std",
+    "log/std",
     "scale-info/std",
     "pallet-assets/std",
     "pallet-balances/std",

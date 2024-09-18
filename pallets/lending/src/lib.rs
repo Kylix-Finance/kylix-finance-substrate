@@ -334,12 +334,35 @@ pub mod pallet {
 			Ok(accumulated_rate)
 		}
 
+		fn exp_fixed_u128(&self, x: FixedU128) -> Result<FixedU128, Error<T>> {
+			let mut sum = FixedU128::one();
+			let mut term = FixedU128::one();
+			let mut n = 1u128;
+
+			loop {
+				term = term
+					.checked_mul(&x)
+					.ok_or(Error::<T>::OverflowError)?
+					.checked_div(&FixedU128::from(n))
+					.ok_or(Error::<T>::OverflowError)?;
+				sum = sum.checked_add(&term).ok_or(Error::<T>::OverflowError)?;
+
+				if term < FixedU128::from_inner(1_000_000) {
+					break;
+				}
+
+				n += 1;
+				if n > 20 {
+					// Limit the number of iterations to prevent infinite loops
+					break;
+				}
+			}
+			Ok(sum)
+		}
+
 		/// Calculate compounded interest
-		/// Borrow interest compounds every second. This is achieved by an approximation of binomial
-		/// expansion to the third term.
-		/// BinomalExpansion:(1+x)^n = 1+ nx + (n/2)(n−1)*x^2 + (n/6)(n−1)(n−2)x^3 +...
-		/// Where n = t, number of periods and x = r, rate per second
-		/// Interest:(1+r) t ≈1 + rt + t/2 * (t−1) * r^2 + (t/6) * (t−1) * (t−2) * r^3
+		/// Borrow interest compounds every second. This is achieved by using Taylor Series
+		/// Approximation
 		fn calculate_compunded_interest(&self) -> Result<Rate, Error<T>> {
 			let rate = self
 				.borrow_interest_rate()?
@@ -348,38 +371,12 @@ pub mod pallet {
 			let t = Pallet::<T>::now_in_seconds()
 				.checked_sub(self.last_accrued_interest_at)
 				.ok_or(Error::<T>::OverflowError)?;
-			let t_minus_one = t.checked_sub(1u64).ok_or(Error::<T>::OverflowError)?;
-			let t_minus_two = t.checked_sub(2u64).ok_or(Error::<T>::OverflowError)?;
-			let rate_square = rate.checked_mul(&rate).ok_or(Error::<T>::OverflowError)?;
-			let rate_cube = rate_square.checked_mul(&rate).ok_or(Error::<T>::OverflowError)?;
+			// Compute x = rate * t
+			let x =
+				rate.checked_mul(&FixedU128::from(t as u128)).ok_or(Error::<T>::OverflowError)?;
 
-			let first_term =
-				rate.checked_mul(&(t as u128).into()).ok_or(Error::<T>::OverflowError)?;
-
-			let second_term = FixedU128::from(t as u128)
-				.checked_mul(&(t_minus_one as u128).into())
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_mul(&rate_square)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(&(2u128).into())
-				.ok_or(Error::<T>::OverflowError)?;
-
-			let third_term = FixedU128::from(t as u128)
-				.checked_mul(&(t_minus_one as u128).into())
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_mul(&(t_minus_two as u128).into())
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_mul(&rate_cube)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_div(&(6u128).into())
-				.ok_or(Error::<T>::OverflowError)?;
-			let interest = FixedU128::one()
-				.checked_add(&first_term)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_add(&second_term)
-				.ok_or(Error::<T>::OverflowError)?
-				.checked_add(&third_term)
-				.ok_or(Error::<T>::OverflowError)?;
+			// Compute interest = exp(x)
+			let interest = self.exp_fixed_u128(x)?;
 
 			Ok(interest)
 		}
@@ -404,6 +401,7 @@ pub mod pallet {
 			if self.last_accrued_interest_at < Pallet::<T>::now_in_seconds() {
 				self.update_supply_index()?;
 				self.update_borrow_index()?;
+				self.last_accrued_interest_at = Pallet::<T>::now_in_seconds();
 			}
 			Ok(())
 		}
@@ -432,11 +430,17 @@ pub mod pallet {
 		}
 
 		/// Update pool: move assets from borrowed_balance reserved_balance on repayment
-		pub fn move_asset_on_repay(&mut self, balance: AssetBalanceOf<T>) -> Result<(), Error<T>> {
-			self.borrowed_balance =
-				self.borrowed_balance.checked_sub(&balance).ok_or(Error::<T>::OverflowError)?;
+		pub fn move_asset_on_repay(
+			&mut self,
+			pay: AssetBalanceOf<T>,
+			principal_reduction: AssetBalanceOf<T>,
+		) -> Result<(), Error<T>> {
+			self.borrowed_balance = self
+				.borrowed_balance
+				.checked_sub(&principal_reduction)
+				.ok_or(Error::<T>::OverflowError)?;
 			self.reserve_balance =
-				self.reserve_balance.checked_add(&balance).ok_or(Error::<T>::OverflowError)?;
+				self.reserve_balance.checked_add(&pay).ok_or(Error::<T>::OverflowError)?;
 			Ok(())
 		}
 
@@ -455,18 +459,29 @@ pub mod pallet {
 			Ok(max_loan_amount)
 		}
 
-		/// Calculate the repayable amount including borrow interests
-		/// _amount = borrow_balance * borrow_index
+		/// Calculate the repayable amount including accrued interest
+		/// repayable_amount = borrowed_balance * (current_borrow_index /
+		/// borrow_index_at_borrow_time)
 		pub fn repayable_amount(
 			&self,
-			borrow_balance: AssetBalanceOf<T>,
+			loan: &UserBorrow<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let r = FixedU128::from_inner(borrow_balance.saturated_into())
-				.checked_mul(&self.borrow_index)
+			let index_ratio = self
+				.borrow_index
+				.checked_div(&loan.borrow_index_at_borrow_time)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
+
+			let repayable_amount_u128 = index_ratio
+				.checked_mul(&FixedU128::from(borrowed_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				.saturated_into();
-			Ok(r)
+				.into_inner() /
+				FixedU128::accuracy();
+
+			let repayable_amount = repayable_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+
+			Ok(repayable_amount)
 		}
 	}
 
@@ -1293,6 +1308,7 @@ pub mod pallet {
 				borrowed_balance: scaled_balance,
 				collateral_asset,
 				collateral_balance,
+				borrow_index_at_borrow_time: pool.borrow_index,
 			};
 
 			Borrows::<T>::try_mutate(
@@ -1344,30 +1360,50 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquidityWithdrawal);
 
-			// let's check if our pool does exist
+			// Retrieve the lending pool and update the indexes
 			let asset_pool = AssetPool::<T>::from(asset);
-
-			// get the lending pool and update the indexes
 			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
 				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
 			pool.update_indexes()?;
 
-			// get the repay amount and check if loan exists
+			// Retrieve the loan and calculate the repayable amount
 			let mut loan = Borrows::<T>::get((who, asset, collateral_asset))
 				.ok_or(Error::<T>::LoanDoesNotExists)?;
-			let repayable_balance = pool.repayable_amount(loan.borrowed_balance)?;
+			let repayable_balance = pool.repayable_amount(&loan)?;
 
-			// take max upto repayable amount
+			// Determine the payment amount and whether it's a full payment
 			let (pay, is_full_payment) = if balance <= repayable_balance {
 				(balance, false)
 			} else {
 				(repayable_balance, true)
 			};
 
-			// Update pool: transfer asset from reserved_balance to borrowed_balance
-			pool.move_asset_on_repay(pay)?;
+			// Calculate the ratio of the repayment to the total repayable amount using u128
+			let repay_ratio_numerator = pay.saturated_into::<u128>();
+			let repay_ratio_denominator = repayable_balance.saturated_into::<u128>();
 
-			// transfer repay amount to the market
+			// Ensure the denominator is not zero
+			ensure!(repay_ratio_denominator > 0, Error::<T>::OverflowError);
+
+			// Calculate the repay ratio as a FixedU128
+			let repay_ratio =
+				FixedU128::checked_from_rational(repay_ratio_numerator, repay_ratio_denominator)
+					.ok_or(Error::<T>::OverflowError)?;
+
+			// Update the loan's borrowed balance
+			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
+			let borrowed_balance_reduction_u128 = repay_ratio
+				.checked_mul(&FixedU128::from(borrowed_balance_u128))
+				.ok_or(Error::<T>::OverflowError)?
+				.into_inner() /
+				FixedU128::accuracy();
+
+			// Update the pool balances
+			let borrowed_balance_reduction =
+				borrowed_balance_reduction_u128.saturated_into::<AssetBalanceOf<T>>();
+			pool.move_asset_on_repay(pay, borrowed_balance_reduction)?;
+
+			// Transfer the repayment amount to the market
 			T::Fungibles::transfer(
 				asset.clone(),
 				who,
@@ -1376,10 +1412,23 @@ pub mod pallet {
 				Preservation::Preserve,
 			)?;
 
+			let new_borrowed_balance_u128 =
+				borrowed_balance_u128.saturating_sub(borrowed_balance_reduction_u128);
+
+			loan.borrowed_balance = new_borrowed_balance_u128.saturated_into::<AssetBalanceOf<T>>();
+
+			let release_collateral_amount =
+				Self::get_release_collateral_amount(repay_ratio, loan.collateral_balance)?;
+
+			loan.collateral_balance = loan
+				.collateral_balance
+				.checked_sub(&release_collateral_amount)
+				.ok_or(Error::<T>::OverflowError)?;
+
+			// Update the loan or remove it if fully repaid
 			if is_full_payment {
-				// clear the borrow
 				Borrows::<T>::remove((who, asset, collateral_asset));
-				// release all the collateral
+				// Release all the collateral
 				T::Fungibles::transfer(
 					collateral_asset.clone(),
 					&Self::account_id(),
@@ -1388,19 +1437,9 @@ pub mod pallet {
 					Preservation::Preserve,
 				)?;
 			} else {
-				// get the amount of collateral to release
-				// pay / repayable_balance * collateral_balance
-				let release_collateral_amount: AssetBalanceOf<T> =
-					Self::get_release_collateral_amount(
-						pay,
-						repayable_balance,
-						loan.collateral_balance,
-					)?;
-				// repay the borrow
-				let scaled_pay = pool.scaled_borrow_balance(pay)?;
-				loan.repay_partial(scaled_pay, release_collateral_amount)?;
-				Borrows::<T>::set((who, asset, collateral_asset), Some(loan));
-				// release partial collateral
+				// Update the loan
+				Borrows::<T>::insert((who, asset, collateral_asset), loan);
+				// Release partial collateral
 				T::Fungibles::transfer(
 					collateral_asset.clone(),
 					&Self::account_id(),
@@ -1410,7 +1449,8 @@ pub mod pallet {
 				)?;
 			}
 
-			// emit event
+			// Update the storage with the new pool state
+			LendingPoolStorage::<T>::insert(&asset_pool, pool);
 
 			Ok(())
 		}
@@ -1528,25 +1568,21 @@ pub mod pallet {
 		/// Returns the amount of collateral asset to be released on partial repayment
 		/// Returns release_amount = pay / repayable_balance * collateral_balance
 		fn get_release_collateral_amount(
-			payment: AssetBalanceOf<T>,
-			total_due: AssetBalanceOf<T>,
+			repay_ratio: FixedU128,
 			collateral_balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let f_payment = FixedU128::from_inner(payment.saturated_into::<u128>());
-			let f_total_due = FixedU128::from_inner(total_due.saturated_into::<u128>());
-			let f_collateral_balance =
-				FixedU128::from_inner(collateral_balance.saturated_into::<u128>());
+			let collateral_balance_u128 = collateral_balance.saturated_into::<u128>();
 
-			let release_ratio =
-				f_payment.checked_div(&f_total_due).ok_or(Error::<T>::OverflowError)?;
-
-			let release_amount = release_ratio
-				.checked_mul(&f_collateral_balance)
+			let release_collateral_amount_u128 = repay_ratio
+				.checked_mul(&FixedU128::from(collateral_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				.saturated_into();
+				.into_inner() /
+				FixedU128::accuracy();
 
-			Ok(release_amount)
+			let release_collateral_amount =
+				release_collateral_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+
+			Ok(release_collateral_amount)
 		}
 	}
 }
