@@ -9,12 +9,25 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use log::LevelFilter;
+use once_cell::sync::OnceCell;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	BuildStorage, FixedU128,
 };
 use std::{cell::RefCell, collections::HashSet};
+
+// Define a static OnceCell to ensure the logger is initialized only once
+static INIT_LOGGER: OnceCell<()> = OnceCell::new();
+
+/// Initializes the logger for tests.
+/// This should be called at the beginning of your tests.
+fn initialize_logger() {
+	INIT_LOGGER.get_or_init(|| {
+		let _ = env_logger::builder().is_test(true).try_init();
+	});
+}
 
 pub type AssetId = u32;
 pub type AccountId = u64;
@@ -24,8 +37,10 @@ type Balance = u128;
 pub const ADMIN: AccountId = 1;
 pub const ALICE: AccountId = 2;
 pub const BOB: AccountId = 3;
-pub const DOT: AssetId = 1u32;
-pub const KSM: AssetId = 2u32;
+pub const USDT: AssetId = 1u32;
+pub const DOT: AssetId = 2u32;
+pub const KSM: AssetId = 3u32;
+
 pub const LENDING_POOL_TOKEN: AssetId = 99999u32;
 pub type Rate = FixedU128;
 const BLOCK_TIME_MS: u64 = 6_000; // 6 seconds per block in milliseconds
@@ -155,6 +170,7 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		initialize_logger();
 		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 		let mut unique_assets = HashSet::new();
 		let mut assets = vec![];

@@ -6,28 +6,28 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use codec::{Decode, Encode};
 use frame_support::traits::AsEnsureOriginWithArg;
 use frame_system::{EnsureRoot, EnsureSigned};
 use lending::{fungibles::metadata::Inspect, FixedU128};
 use pallet_grandpa::AuthorityId as GrandpaId;
-use sp_api::{impl_runtime_apis, decl_runtime_apis};
+use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
+use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys, 
+	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, One, Verify,
-	}, 
-	transaction_validity::{TransactionSource, TransactionValidity}, 
-	ApplyExtrinsicResult, FixedU64, MultiSignature
+	},
+	transaction_validity::{TransactionSource, TransactionValidity},
+	ApplyExtrinsicResult, FixedU64, MultiSignature,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use codec::{Encode, Decode};
-use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -50,8 +50,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 use pallet_transaction_payment::{ConstFeeMultiplier, CurrencyAdapter, Multiplier};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
-pub use sp_runtime::SaturatedConversion;
+pub use sp_runtime::{traits::Zero, Perbill, Permill, SaturatedConversion};
 
 /// Import the lending pallet.
 pub use lending;
@@ -324,23 +323,30 @@ impl pallet_assets::Config for Runtime {
 
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
 pub struct LendingPoolInfo {
-    pub id: u32,
+	pub id: u32,
 	pub asset_id: u32,
-    pub asset: Vec<u8>,
+	pub asset: Vec<u8>,
 	pub asset_decimals: u32,
 	pub asset_symbol: Vec<u8>,
-    pub collateral_q: u64,
-    pub utilization: FixedU64,
-    pub borrow_apy: FixedU128,
-    pub supply_apy: FixedU128,
+	pub collateral_q: u64,
+	pub utilization: FixedU64,
+	pub borrow_apy: FixedU128,
+	pub supply_apy: FixedU128,
 	pub is_activated: bool,
-    pub balance: u128,
+	pub balance: u128,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct UserLTVInfo {
+	pub current_ltv: FixedU128,
+	pub sale_ltv: FixedU128,
+	pub liquidation_ltv: FixedU128,
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
 pub struct AggregatedTotals {
-    pub total_supply: u128,
-    pub total_borrow: u128,
+	pub total_supply: u128,
+	pub total_borrow: u128,
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -410,6 +416,7 @@ mod benches {
 decl_runtime_apis! {
 	pub trait LendingPoolApi {
 		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals);
+		fn get_user_ltv(account: AccountId) -> UserLTVInfo;
 	}
 }
 
@@ -645,6 +652,15 @@ impl_runtime_apis! {
 	}
 
 	impl crate::LendingPoolApi<Block> for Runtime {
+		fn get_user_ltv(account: AccountId) -> UserLTVInfo {
+			let (current_ltv, sale_ltv, liquidation_ltv) = Lending::compute_user_ltv(&account);
+			UserLTVInfo {
+				current_ltv,
+				sale_ltv,
+				liquidation_ltv,
+			}
+		}
+
 		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals) {
 			let mut total_supply: u128 = 0;
 			let mut total_borrow: u128 = 0;
@@ -659,7 +675,7 @@ impl_runtime_apis! {
 
 					// Calculate the balance=reserve_balance+borrowed_balance
 					let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
-					
+
 					let equivalent_asset_supply_amount = lending::Pallet::<Runtime>::get_equivalent_asset_amount(
 						pool.lend_token_id,
 						1, //USDT
@@ -671,7 +687,7 @@ impl_runtime_apis! {
 						1, //USDT
 						pool.borrowed_balance,
 					).unwrap_or_default();
-					
+
 					// Accumulate totals
 					total_supply = total_supply.saturating_add(equivalent_asset_supply_amount);
 					total_borrow = total_borrow.saturating_add(equivalent_asset_borrow_amount);
@@ -679,8 +695,8 @@ impl_runtime_apis! {
 					LendingPoolInfo {
 						id: pool.id,
 						asset_id: pool.lend_token_id,
-						asset: asset_name, 
-						asset_decimals: asset_decimals as u32, 
+						asset: asset_name,
+						asset_decimals: asset_decimals as u32,
 						asset_symbol: asset_symbol,
 						collateral_q: pool.collateral_factor.deconstruct().into(),
 						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
