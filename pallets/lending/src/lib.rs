@@ -476,8 +476,7 @@ pub mod pallet {
 			let repayable_amount_u128 = index_ratio
 				.checked_mul(&FixedU128::from(borrowed_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() /
-				FixedU128::accuracy();
+				.into_inner() / FixedU128::accuracy();
 
 			let repayable_amount = repayable_amount_u128.saturated_into::<AssetBalanceOf<T>>();
 
@@ -1395,8 +1394,7 @@ pub mod pallet {
 			let borrowed_balance_reduction_u128 = repay_ratio
 				.checked_mul(&FixedU128::from(borrowed_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() /
-				FixedU128::accuracy();
+				.into_inner() / FixedU128::accuracy();
 
 			// Update the pool balances
 			let borrowed_balance_reduction =
@@ -1525,6 +1523,86 @@ pub mod pallet {
 				.saturated_into::<u64>()
 		}
 
+		pub fn compute_user_ltv(account: &T::AccountId) -> (FixedU128, FixedU128, FixedU128) {
+			let mut total_borrowed_usdt: u128 = 0;
+			let mut total_collateral_usdt: u128 = 0;
+			let mut min_collateral_factor = Permill::from_percent(100);
+			let mut min_liquidation_threshold = Permill::from_percent(100);
+
+			// Iterate over all borrows for the account
+			for ((borrower, borrowed_asset, collateral_asset), loan) in Borrows::<T>::iter() {
+				if borrower != *account {
+					continue;
+				}
+				// Get the lending pool for the borrowed asset
+				let asset_pool = AssetPool::<T>::from(borrowed_asset);
+				let mut pool = match LendingPoolStorage::<T>::get(&asset_pool) {
+					Some(p) => p,
+					None => continue, // Skip if no pool found
+				};
+
+				// Update pool indexes
+				if pool.update_indexes().is_err() {
+					continue;
+				}
+
+				// Compute the repayable amount (current borrowed balance with interest)
+				let repayable_amount = match pool.repayable_amount(&loan) {
+					Ok(amount) => amount,
+					Err(_) => continue,
+				};
+
+				// Convert repayable_amount to USDT equivalent
+				let borrowed_usdt = match Self::get_equivalent_asset_amount(
+					borrowed_asset,
+					1u32.into(), // Assuming 1 is the asset ID for USDT
+					repayable_amount,
+				) {
+					Ok(amount) => amount,
+					Err(_) => continue,
+				};
+
+				total_borrowed_usdt =
+					total_borrowed_usdt.saturating_add(borrowed_usdt.saturated_into::<u128>());
+
+				// Convert collateral to USDT equivalent
+				let collateral_usdt = match Self::get_equivalent_asset_amount(
+					collateral_asset,
+					1u32.into(), // Assuming 1 is the asset ID for USDT
+					loan.collateral_balance,
+				) {
+					Ok(amount) => amount,
+					Err(_) => continue,
+				};
+
+				total_collateral_usdt =
+					total_collateral_usdt.saturating_add(collateral_usdt.saturated_into::<u128>());
+
+				// Update minimum collateral factors
+				if pool.collateral_factor < min_collateral_factor {
+					min_collateral_factor = pool.collateral_factor;
+				}
+
+				if pool.liquidation_threshold < min_liquidation_threshold {
+					min_liquidation_threshold = pool.liquidation_threshold;
+				}
+			}
+
+			// Calculate current LTV
+			let current_ltv = if !total_collateral_usdt.is_zero() {
+				FixedU128::checked_from_rational(total_borrowed_usdt, total_collateral_usdt)
+					.unwrap_or_else(|| FixedU128::zero())
+			} else {
+				FixedU128::zero()
+			};
+
+			// Convert ratios to FixedU128
+			let sale_ltv: FixedU128 = min_collateral_factor.into();
+			let liquidation_ltv: FixedU128 = min_liquidation_threshold.into();
+
+			(current_ltv, sale_ltv, liquidation_ltv)
+		}
+
 		/// Returns the amount of asset equivalent to the collateral
 		/// checks if price of collateral asset available in terms of asset then
 		/// return `price * collateral_balance `
@@ -1576,8 +1654,7 @@ pub mod pallet {
 			let release_collateral_amount_u128 = repay_ratio
 				.checked_mul(&FixedU128::from(collateral_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() /
-				FixedU128::accuracy();
+				.into_inner() / FixedU128::accuracy();
 
 			let release_collateral_amount =
 				release_collateral_amount_u128.saturated_into::<AssetBalanceOf<T>>();
