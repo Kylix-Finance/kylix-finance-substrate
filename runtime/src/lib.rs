@@ -723,5 +723,38 @@ impl_runtime_apis! {
 			// Return the pools and aggregated totals
 			(pools, aggregated_totals)
 		}
+
+		fn get_lending_pool(pool_id: u32) -> Option<LendingPoolInfo> {
+			// Fetch the specific lending pool from storage
+			lending::LendingPoolStorage::<Runtime>::get(pool_id).map(|pool| {
+				// Use the InspectMetadata trait to get the asset name and decimals
+				let asset_name = pallet_assets::Pallet::<Runtime>::name(pool.lend_token_id);
+				let asset_decimals = pallet_assets::Pallet::<Runtime>::decimals(pool.lend_token_id);
+				let asset_symbol = pallet_assets::Pallet::<Runtime>::symbol(pool.lend_token_id);
+		
+				// Calculate the balance = reserve_balance + borrowed_balance
+				let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
+		
+				let asset_icon = format!("https://example.com/icons/{}.svg", String::from_utf8_lossy(&asset_symbol));
+		
+				LendingPoolInfo {
+					id: pool.id,
+					asset_id: pool.lend_token_id,
+					asset: asset_name,
+					asset_decimals: asset_decimals as u32,
+					asset_symbol: asset_symbol,
+					asset_icon: asset_icon, // Mock icon URL
+					collateral_q: pool.collateral_factor.deconstruct().into(),
+					utilization: pool.utilisation_ratio().unwrap_or_default().into(),
+					borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
+					borrow_apy_s: FixedU128::zero(), // Set to 0 for now
+					supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
+					supply_apy_s: FixedU128::zero(), // Set to 0 for now
+					is_activated: pool.activated,
+					balance,
+				}
+			})
+		}
+		
 	}
 }
