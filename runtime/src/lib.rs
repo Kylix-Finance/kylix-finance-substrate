@@ -702,10 +702,13 @@ impl_runtime_apis! {
 						asset: asset_name,
 						asset_decimals: asset_decimals as u32,
 						asset_symbol: asset_symbol,
+						asset_icon: asset_icon,
 						collateral_q: pool.collateral_factor.deconstruct().into(),
 						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
 						borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
+						borrow_apy_s: FixedU128::zero(), // Set to 0 for now
 						supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
+						supply_apy_s: FixedU128::zero(), // Set to 0 for now
 						is_activated: pool.activated,
 						balance,
 					}
