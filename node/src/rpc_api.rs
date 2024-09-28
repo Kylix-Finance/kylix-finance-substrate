@@ -28,4 +28,21 @@ pub trait LendingPoolApi {
     /// due to issues such as blockchain state access failures or other runtime errors.
     #[method(name = "getLendingPools")]
     fn get_lending_pools(&self) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
+
+    /// Fetches information for a specific lending pool by its pool_id.
+    ///
+    /// # Parameters
+    /// * `pool_id` - The identifier of the lending pool to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// * `RpcResult<Option<LendingPoolInfo>>` - A result containing the `LendingPoolInfo` for the
+    ///   specified pool, or `None` if the pool doesn't exist.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an `RpcResult` that may contain an error if the data cannot be retrieved
+    /// due to issues such as blockchain state access failures or other runtime errors.
+    #[method(name = "getLendingPool")]
+    fn get_lending_pool(&self, pool_id: u32) -> RpcResult<Option<LendingPoolInfo>>;
 }

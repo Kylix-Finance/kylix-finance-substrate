@@ -327,11 +327,14 @@ pub struct LendingPoolInfo {
 	pub asset_id: u32,
 	pub asset: Vec<u8>,
 	pub asset_decimals: u32,
+	pub asset_icon: String,
 	pub asset_symbol: Vec<u8>,
 	pub collateral_q: u64,
 	pub utilization: FixedU64,
 	pub borrow_apy: FixedU128,
+	pub borrow_apy_s: FixedU128,
 	pub supply_apy: FixedU128,
+	pub supply_apy_s: FixedU128,
 	pub is_activated: bool,
 	pub balance: u128,
 }
@@ -416,6 +419,7 @@ mod benches {
 decl_runtime_apis! {
 	pub trait LendingPoolApi {
 		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals);
+		fn get_lending_pool(pool_id: u32) -> Option<LendingPoolInfo>;
 		fn get_user_ltv(account: AccountId) -> UserLTVInfo;
 	}
 }

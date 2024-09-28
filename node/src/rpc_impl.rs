@@ -24,12 +24,10 @@ impl<C, P> LendingPoolApiImpl<C, P> {
     /// Creates a new instance of `LendingPoolApiImpl`.
     ///
     /// # Arguments
-    ///
     /// * `client` - An `Arc` reference to the client that provides access to
     ///   the runtime APIs and blockchain state.
     ///
     /// # Returns
-    ///
     /// A new instance of `LendingPoolApiImpl`.
     pub fn new(client: Arc<C>) -> Self {
         Self {
@@ -51,13 +49,11 @@ where
     /// current state of lending pools and their aggregated totals.
     ///
     /// # Returns
-    ///
     /// A `RpcResult` containing a tuple:
     /// - `Vec<LendingPoolInfo>`: A vector of lending pool information.
     /// - `AggregatedTotals`: Aggregated totals across all lending pools.
     ///
     /// # Errors
-    ///
     /// Returns an error if the runtime API call fails.
     fn get_lending_pools(&self) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)> {
         // Access the runtime API.
@@ -68,6 +64,34 @@ where
         
         // Call the `get_lending_pools` method from the runtime API.
         let result = api.get_lending_pools(best_block_hash)
+            .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+        
+        // Return the result.
+        Ok(result)
+    }
+
+    /// Retrieves a specific lending pool by pool_id.
+    ///
+    /// This method calls the `get_lending_pool` runtime API to fetch the
+    /// current state of a single lending pool.
+    ///
+    /// # Arguments
+    /// * `pool_id` - The identifier of the lending pool to retrieve.
+    ///
+    /// # Returns
+    /// A `RpcResult` containing the `LendingPoolInfo` for the requested pool, or `None` if the pool doesn't exist.
+    ///
+    /// # Errors
+    /// Returns an error if the runtime API call fails. 
+    fn get_lending_pool(&self, pool_id: u32) -> RpcResult<Option<LendingPoolInfo>> {
+        // Access the runtime API.
+        let api = self.client.runtime_api();
+        
+        // Retrieve the hash of the best (most recent) block.
+        let best_block_hash = self.client.info().best_hash;
+        
+        // Call the `get_lending_pool` method from the runtime API with the specified pool_id.
+        let result = api.get_lending_pool(best_block_hash, pool_id)
             .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
         
         // Return the result.
