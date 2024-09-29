@@ -42,8 +42,7 @@ where
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
-    use crate::rpc_impl::LendingPoolApiImpl;
-	use crate::rpc_api::LendingPoolApiServer;
+	use crate::{rpc_api::LendingPoolApiServer, rpc_impl::LendingPoolApiImpl};
 
 	let mut module = RpcModule::new(());
 	let FullDeps { client, pool, deny_unsafe } = deps;

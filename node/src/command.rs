@@ -16,8 +16,7 @@ use sp_keyring::Sr25519Keyring;
 use sp_runtime::traits::Block as BlockT;
 
 // Added imports for the RPC implementation
-use crate::rpc_api::LendingPoolApiServer;
-use crate::rpc_impl::LendingPoolApiImpl;
+use crate::{rpc_api::LendingPoolApiServer, rpc_impl::LendingPoolApiImpl};
 use jsonrpsee::core::Error;
 
 #[cfg(feature = "try-runtime")]
@@ -61,30 +60,30 @@ impl SubstrateCli for Cli {
 // Added function to handle lending pool command
 pub fn handle_lending_pool_command<C, Block>(client: Arc<C>) -> Result<(), Error>
 where
-    C: ProvideRuntimeApi<Block> + HeaderBackend<Block> + Send + Sync + 'static,
-    Block: BlockT,
-    C::Api: LendingPoolApi<Block>,
+	C: ProvideRuntimeApi<Block> + HeaderBackend<Block> + Send + Sync + 'static,
+	Block: BlockT,
+	C::Api: LendingPoolApi<Block>,
 {
-    // Create a new Tokio runtime
-    let runtime = tokio::runtime::Runtime::new()?;
+	// Create a new Tokio runtime
+	let runtime = tokio::runtime::Runtime::new()?;
 
-    // Use the runtime to execute the async RPC call
-    let result = runtime.block_on(async {
-        let lending_pool_rpc = LendingPoolApiImpl::new(client.clone());
-        lending_pool_rpc.get_lending_pools()
-    });
+	// Use the runtime to execute the async RPC call
+	let result = runtime.block_on(async {
+		let lending_pool_rpc = LendingPoolApiImpl::new(client.clone());
+		lending_pool_rpc.get_lending_pools()
+	});
 
-    match result {
-        Ok((pools, totals)) => {
-            println!("Lending Pools: {:?}", pools);
-            println!("Aggregated Totals: {:?}", totals);
-            Ok(())
-        }
-        Err(e) => {
-            eprintln!("Error fetching lending pools: {:?}", e);
-            Err(e)
-        }
-    }
+	match result {
+		Ok((pools, totals)) => {
+			println!("Lending Pools: {:?}", pools);
+			println!("Aggregated Totals: {:?}", totals);
+			Ok(())
+		},
+		Err(e) => {
+			eprintln!("Error fetching lending pools: {:?}", e);
+			Err(e)
+		},
+	}
 }
 
 /// Parse and run command line arguments
@@ -247,10 +246,10 @@ pub fn run() -> sc_cli::Result<()> {
 			runner.sync_run(|config| {
 				// Create the service components, including the client
 				let PartialComponents { client, .. } = service::new_partial(&config)?;
-		
+
 				// Call the handle_lending_pool_command function with the client
 				let result = handle_lending_pool_command(client.clone());
-		
+
 				match result {
 					Ok(_) => Ok(()),
 					Err(e) => Err(sc_cli::Error::Application(e.into())),
