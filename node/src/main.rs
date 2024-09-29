@@ -14,5 +14,3 @@ mod rpc_impl;
 fn main() -> sc_cli::Result<()> {
 	command::run()
 }
-
-
