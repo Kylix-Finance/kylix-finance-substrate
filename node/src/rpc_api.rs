@@ -1,5 +1,5 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use kylix_runtime::{AggregatedTotals, LendingPoolInfo};
+use kylix_runtime::{AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo, AccountId};
 
 /// Defines the custom RPC interface for the lending pools.
 /// This trait specifies the structure and methods for the RPC interface that clients
@@ -28,4 +28,14 @@ pub trait LendingPoolApi {
     /// due to issues such as blockchain state access failures or other runtime errors.
     #[method(name = "getLendingPools")]
     fn get_lending_pools(&self) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
+    
+    #[method(name = "getUserLtv")]
+    fn get_user_ltv(&self, account: AccountId) -> RpcResult<UserLTVInfo>;
+
+    #[method(name = "getAssetWiseSupplies")]
+    fn get_asset_wise_supplies(&self, account: AccountId) -> RpcResult<(Vec<SuppliedAsset>, TotalDeposit)>;
+
+    #[method(name = "getAssetWiseBorrowsCollaterals")]
+    fn get_asset_wise_borrows_collaterals(&self, account: AccountId) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>;
+
 }

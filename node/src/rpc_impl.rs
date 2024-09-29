@@ -3,7 +3,7 @@ use jsonrpsee::core::RpcResult;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;
-use kylix_runtime::{LendingPoolApi, AggregatedTotals, LendingPoolInfo};
+use kylix_runtime::{AccountId, AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolApi, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo};
 use crate::rpc_api::LendingPoolApiServer;
 
 /// Implementation of the RPC methods for the Lending Pool API.
@@ -71,6 +71,36 @@ where
             .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
         
         // Return the result.
+        Ok(result)
+    }
+
+    fn get_user_ltv(&self, account: AccountId) -> RpcResult<UserLTVInfo> {
+        let api = self.client.runtime_api();
+        let best_block_hash = self.client.info().best_hash;
+        
+        let result = api.get_user_ltv(best_block_hash, account)
+            .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+        
+        Ok(result)
+    }
+
+    fn get_asset_wise_supplies(&self, account: AccountId) -> RpcResult<(Vec<SuppliedAsset>, TotalDeposit)> {
+        let api = self.client.runtime_api();
+        let best_block_hash = self.client.info().best_hash;
+        
+        let result = api.get_asset_wise_supplies(best_block_hash, account)
+            .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+        
+        Ok(result)
+    }
+
+    fn get_asset_wise_borrows_collaterals(&self, account: AccountId) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)> {
+        let api = self.client.runtime_api();
+        let best_block_hash = self.client.info().best_hash;
+        
+        let result = api.get_asset_wise_borrows_collaterals(best_block_hash, account)
+            .map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+        
         Ok(result)
     }
 }

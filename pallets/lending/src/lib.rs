@@ -1661,5 +1661,14 @@ pub mod pallet {
 
 			Ok(release_collateral_amount)
 		}
+
+		/// Returns the amount of lp token for an account
+		pub fn get_asset_balance(
+			account: &T::AccountId,
+			asset: AssetIdOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			let user_balance = T::Fungibles::balance(asset.clone(), account);
+			Ok(user_balance)
+		}
 	}
 }
