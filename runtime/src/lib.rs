@@ -19,7 +19,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, One, Verify,
+		AccountIdLookup, BlakeTwo256, Block as BlockT, Bounded, IdentifyAccount, NumberFor, One, Verify
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedU64, MultiSignature,
@@ -945,7 +945,7 @@ impl_runtime_apis! {
 			let base_asset = base_asset.unwrap_or(1); // If base_asset is None, default to USDT = 1
 			match lending::Pallet::<Runtime>::get_asset_price(asset, base_asset) {
 				Ok(price) => price,
-				Err(_) => FixedU128::zero(),
+				Err(_) => FixedU128::max_value(),
 			}
 		}
 	}
