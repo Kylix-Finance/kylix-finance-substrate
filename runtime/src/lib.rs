@@ -83,6 +83,9 @@ pub type TotalBorrow = Balance;
 /// Total value of all collateral in USDT for a given account.
 pub type TotalCollateral = Balance;
 
+/// Id of asset
+pub type AssetId = u32;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -460,6 +463,7 @@ decl_runtime_apis! {
 		fn get_user_ltv(account: AccountId) -> UserLTVInfo;
 		fn get_asset_wise_supplies(account: AccountId) -> (Vec<SuppliedAsset>, TotalDeposit);
 		fn get_asset_wise_borrows_collaterals(account: AccountId) -> (Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral);
+		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> FixedU128;
 	}
 }
 
@@ -937,5 +941,12 @@ impl_runtime_apis! {
 			(borrowed_assets, collateral_assets, total_borrow, total_collateral)
 		}
 
+		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> FixedU128{
+			let base_asset = base_asset.unwrap_or(1); // If base_asset is None, default to USDT = 1
+			match lending::Pallet::<Runtime>::get_asset_price(asset, base_asset) {
+				Ok(price) => price,
+				Err(_) => FixedU128::zero(),
+			}
+		}
 	}
 }

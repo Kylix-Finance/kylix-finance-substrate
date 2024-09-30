@@ -1,12 +1,12 @@
 use crate::rpc_api::LendingPoolApiServer;
 use jsonrpsee::core::RpcResult;
 use kylix_runtime::{
-	AccountId, AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolApi, LendingPoolInfo,
-	SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
+	AccountId, AggregatedTotals, AssetId, BorrowedAsset, CollateralAsset, LendingPoolApi,
+	LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::traits::Block as BlockT;
+use sp_runtime::{traits::Block as BlockT, FixedU128};
 use std::sync::Arc;
 
 /// Implementation of the RPC methods for the Lending Pool API.
@@ -109,6 +109,17 @@ where
 
 		let result = api
 			.get_asset_wise_borrows_collaterals(best_block_hash, account)
+			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+
+		Ok(result)
+	}
+
+	fn get_asset_price(&self, asset: AssetId, base_asset: Option<AssetId>) -> RpcResult<FixedU128> {
+		let api = self.client.runtime_api();
+		let best_block_hash = self.client.info().best_hash;
+
+		let result = api
+			.get_asset_price(best_block_hash, asset, base_asset)
 			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
 
 		Ok(result)

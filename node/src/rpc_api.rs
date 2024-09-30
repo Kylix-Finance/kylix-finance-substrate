@@ -1,8 +1,9 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
-	AccountId, AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset,
-	TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
+	AccountId, AggregatedTotals, AssetId, BorrowedAsset, CollateralAsset, LendingPoolInfo,
+	SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
 };
+use sp_runtime::FixedU128;
 
 /// Defines the custom RPC interface for the lending pools.
 /// This trait specifies the structure and methods for the RPC interface that clients
@@ -46,4 +47,7 @@ pub trait LendingPoolApi {
 		&self,
 		account: AccountId,
 	) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>;
+
+	#[method(name = "getAssetPrice")]
+	fn get_asset_price(&self, asset: AssetId, base_asset: Option<AssetId>) -> RpcResult<FixedU128>;
 }

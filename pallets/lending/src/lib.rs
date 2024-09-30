@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use borrow_repay::UserBorrow;
+use frame_support::traits::tokens::fungibles::metadata::Inspect as MetadataInspect;
 ///! # The Lending pallet of Kylix
 ///!
 ///! ## Overview
@@ -93,7 +94,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_assets::Config<AssetId = u32> {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -661,6 +662,8 @@ pub mod pallet {
 		InvalidAssetPrice,
 		/// The price of the asset is not available
 		AssetPriceNotSet,
+		/// Division by zero
+		DivisionByZero,
 	}
 
 	#[pallet::call]
@@ -1662,13 +1665,40 @@ pub mod pallet {
 			Ok(release_collateral_amount)
 		}
 
-		/// Returns the amount of lp token for an account
+		/// Returns the amount of asset for an account
 		pub fn get_asset_balance(
 			account: &T::AccountId,
 			asset: AssetIdOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
 			let user_balance = T::Fungibles::balance(asset.clone(), account);
 			Ok(user_balance)
+		}
+
+		/// Returns the price of asset
+		pub fn get_asset_price(
+			asset: AssetIdOf<T>,
+			base_asset: AssetIdOf<T>,
+		) -> Result<FixedU128, Error<T>> {
+			let price = if let Some(p) = AssetPrices::<T>::get((asset, base_asset)) {
+				let base_asset_decimals = pallet_assets::Pallet::<T>::decimals(base_asset);
+				let decimals_divisor = 10u128
+					.checked_pow(base_asset_decimals as u32)
+					.ok_or(Error::<T>::OverflowError)?;
+				p.checked_div(&FixedU128::from(decimals_divisor))
+					.ok_or(Error::<T>::DivisionByZero)?
+			} else {
+				// Calculate asset price through USDT
+				let asset_usdt_price =
+					AssetPrices::<T>::get((asset, 1)).ok_or(Error::<T>::AssetPriceNotSet)?;
+				let base_asset_usdt_price =
+					AssetPrices::<T>::get((base_asset, 1)).ok_or(Error::<T>::AssetPriceNotSet)?;
+
+				asset_usdt_price
+					.checked_div(&base_asset_usdt_price)
+					.ok_or(Error::<T>::DivisionByZero)?
+			};
+
+			Ok(price)
 		}
 	}
 }
