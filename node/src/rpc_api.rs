@@ -1,7 +1,9 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
-	AccountId, AggregatedTotals, AssetId, BorrowedAsset, CollateralAsset, LendingPoolInfo,
-	SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
+	lending::{
+		BorrowedAsset, CollateralAsset, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
+	},
+	AccountId, AggregatedTotals, AssetId, LendingPoolInfo, UserLTVInfo,
 };
 use sp_runtime::FixedU128;
 

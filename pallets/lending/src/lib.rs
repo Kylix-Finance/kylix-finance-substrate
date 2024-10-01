@@ -38,7 +38,7 @@ use frame_support::traits::tokens::fungibles::metadata::Inspect as MetadataInspe
 ///! Use case
 pub use frame_support::{
 	pallet_prelude::*,
-	sp_runtime,
+	serde, sp_runtime,
 	sp_runtime::{
 		traits::{AccountIdConversion, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
 		FixedPointNumber, FixedU128, Permill, SaturatedConversion,
@@ -54,6 +54,8 @@ pub use frame_support::{
 pub use frame_system::pallet_prelude::*;
 pub use interest_rate::InterestRateModel;
 pub use pallet::*;
+use scale_info::prelude::vec::Vec;
+use serde::{Deserialize, Serialize};
 
 /// Account Type Definition
 pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -73,6 +75,16 @@ pub type Timestamp = u64;
 pub type Rate = FixedU128;
 pub type Ratio = Permill;
 pub type LendingPoolId = u32;
+
+/// Total value of all deposits in USDT for a given account.
+pub type TotalDeposit = u128;
+
+/// Total value of all borrow assets in USDT for a given account.
+pub type TotalBorrow = u128;
+
+/// Total value of all collateral in USDT for a given account.
+pub type TotalCollateral = u128;
+
 pub const SECONDS_PER_YEAR: u64 = 365u64 * 24 * 60 * 60;
 
 mod borrow_repay;
@@ -85,6 +97,39 @@ pub(crate) mod tests;
 mod benchmarking;
 pub mod weights;
 pub use weights::*;
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct AssetInfo {
+	pub asset_id: u32,
+	pub asset_symbol: Vec<u8>,
+	pub asset_name: Vec<u8>,
+	pub decimals: u8,
+	pub asset_icon: Vec<u8>,
+	pub balance: u128,
+}
+
+/// Supplied asset definition. Used as response for rpc
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct SuppliedAsset {
+	#[serde(flatten)]
+	pub asset_info: AssetInfo,
+	pub apy: FixedU128,
+	pub supplied: u128,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct BorrowedAsset {
+	#[serde(flatten)]
+	pub asset_info: AssetInfo,
+	pub apy: FixedU128,
+	pub borrowed: u128,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct CollateralAsset {
+	#[serde(flatten)]
+	pub asset_info: AssetInfo,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -1699,6 +1744,199 @@ pub mod pallet {
 			};
 
 			Ok(price)
+		}
+
+		pub fn get_metadata(asset: AssetIdOf<T>) -> (Vec<u8>, u8, Vec<u8>) {
+			let asset_name = <pallet_assets::Pallet<T> as MetadataInspect<_>>::name(asset);
+			let asset_decimals = <pallet_assets::Pallet<T> as MetadataInspect<_>>::decimals(asset);
+			let asset_symbol = <pallet_assets::Pallet<T> as MetadataInspect<_>>::symbol(asset);
+			(asset_name, asset_decimals, asset_symbol)
+		}
+
+		pub fn get_asset_wise_supplies(
+			account: &T::AccountId,
+		) -> (Vec<SuppliedAsset>, TotalDeposit) {
+			// Initialize the total deposit to zero
+			let mut total_supply: u128 = 0;
+
+			// Iterate over all lending pools and gather asset supplies for the given account
+			let supplied_assets: Vec<SuppliedAsset> = LendingPoolStorage::<T>::iter()
+				.filter_map(|(_, mut pool)| {
+					// Get the account's LP token balance for this pool
+					let lp_balance = Self::get_asset_balance(&account, pool.id).ok()?;
+					if lp_balance.is_zero() {
+						return None;
+					}
+
+					// Update pool indexes
+					if pool.update_indexes().is_err() {
+						return None;
+					}
+
+					// Calculate the supplied amount value by supply_index `lp_balance *
+					// supply_index`
+					let supplied_amount = pool.accrued_deposit(lp_balance).ok()?;
+
+					let asset_balance = Self::get_asset_balance(&account, pool.lend_token_id)
+						.ok()?
+						.saturated_into::<u128>();
+
+					// Retrieve metadata for the pool's asset
+					let (asset_name, asset_decimals, asset_symbol) =
+						Self::get_metadata(pool.lend_token_id);
+					let asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // temporarily mocked
+
+					// Calculate the equivalent supplied amount
+					let equivalent_supplied_amount = Self::get_equivalent_asset_amount(
+						pool.lend_token_id,
+						1, // USDT
+						supplied_amount,
+					)
+					.unwrap_or_default();
+
+					// Calculate the current APY for this pool
+					let apy = pool.supply_interest_rate().unwrap_or_default();
+
+					// Accumulate total supply
+					total_supply = total_supply
+						.saturating_add(equivalent_supplied_amount.saturated_into::<u128>());
+
+					// Create a `SuppliedAsset` for the current pool
+					Some(SuppliedAsset {
+						asset_info: AssetInfo {
+							asset_id: pool.lend_token_id,
+							asset_name,
+							asset_symbol,
+							decimals: asset_decimals,
+							asset_icon,
+							balance: asset_balance,
+						},
+						apy,
+						supplied: supplied_amount.saturated_into::<u128>(),
+					})
+				})
+				.collect();
+
+			// Wrap up and return the assets and total deposits
+			(supplied_assets, total_supply)
+		}
+
+		pub fn get_asset_wise_borrows_collaterals(
+			account: &T::AccountId,
+		) -> (Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral) {
+			// Initialize the total borrow and collateral amounts
+			let mut total_borrow: u128 = 0;
+			let mut total_collateral: u128 = 0;
+
+			// Initialize vectors to store borrowed assets and collateral assets
+			let mut borrowed_assets: Vec<BorrowedAsset> = Vec::new();
+			let mut collateral_assets: Vec<CollateralAsset> = Vec::new();
+
+			// Iterate over all borrows for the account
+			for ((borrower, borrowed_asset, collateral_asset), loan) in Borrows::<T>::iter() {
+				// Ensure we are processing only entries for the given account
+				if borrower != *account {
+					continue;
+				}
+
+				// Get the lending pool for the borrowed asset
+				let asset_pool = AssetPool::<T>::from(borrowed_asset);
+				let mut pool = match LendingPoolStorage::<T>::get(&asset_pool) {
+					Some(p) => p,
+					None => continue, // Skip if no pool found
+				};
+
+				// Update pool indexes
+				if pool.update_indexes().is_err() {
+					continue;
+				}
+
+				// Compute the repayable amount (current borrowed balance with interest)
+				let borrowed_amount = match pool.repayable_amount(&loan) {
+					Ok(amount) => amount,
+					Err(_) => continue,
+				};
+
+				// Handle Borrowed Assets
+				let borrow_balance = match Self::get_asset_balance(&account, borrowed_asset) {
+					Ok(amount) => amount.saturated_into::<u128>(),
+					Err(_) => continue,
+				};
+
+				// Retrieve asset metadata for the borrowed asset
+				let (borrow_asset_name, borrow_asset_decimals, borrow_asset_symbol) =
+					Self::get_metadata(borrowed_asset);
+				let borrow_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Mocked for now
+
+				// Calculate equivalent borrowed amount in USDT (or any other base token)
+				let equivalent_borrowed_amount = Self::get_equivalent_asset_amount(
+					borrowed_asset,
+					1, // USDT
+					borrowed_amount,
+				)
+				.unwrap_or_default();
+
+				// Calculate the APY for borrowing
+				let apy = pool.borrow_interest_rate().unwrap_or_default();
+
+				// Accumulate total borrowed amount
+				total_borrow = total_borrow
+					.saturating_add(equivalent_borrowed_amount.saturated_into::<u128>());
+
+				// Create a BorrowedAsset
+				let borrowed_asset_entry = BorrowedAsset {
+					asset_info: AssetInfo {
+						asset_id: borrowed_asset,
+						asset_symbol: borrow_asset_symbol,
+						asset_name: borrow_asset_name,
+						decimals: borrow_asset_decimals,
+						asset_icon: borrow_asset_icon,
+						balance: borrow_balance,
+					},
+					apy,
+					borrowed: borrowed_amount.saturated_into::<u128>(),
+				};
+
+				borrowed_assets.push(borrowed_asset_entry);
+
+				// Handle Collateral Assets
+				let collateral_balance = loan.collateral_balance;
+
+				// Retrieve asset metadata for the borrowed asset
+				let (collateral_asset_name, collateral_asset_decimals, collateral_asset_symbol) =
+					Self::get_metadata(collateral_asset);
+				let collateral_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Mocked for now
+
+				// Calculate equivalent collateral amount in USDT
+				let equivalent_collateral_amount = Self::get_equivalent_asset_amount(
+					collateral_asset,
+					1, // USDT
+					collateral_balance,
+				)
+				.unwrap_or_default();
+
+				// Accumulate total collateral amount
+				total_collateral = total_collateral
+					.saturating_add(equivalent_collateral_amount.saturated_into::<u128>());
+
+				// Create a CollateralAsset
+				let collateral_asset_entry = CollateralAsset {
+					asset_info: AssetInfo {
+						asset_id: collateral_asset,
+						asset_symbol: collateral_asset_symbol,
+						asset_name: collateral_asset_name,
+						decimals: collateral_asset_decimals,
+						asset_icon: collateral_asset_icon,
+						balance: collateral_balance.saturated_into::<u128>(),
+					},
+				};
+
+				collateral_assets.push(collateral_asset_entry);
+			}
+
+			// Return the list of borrowed assets, collateral assets, total borrow, and total
+			// collateral
+			(borrowed_assets, collateral_assets, total_borrow, total_collateral)
 		}
 	}
 }

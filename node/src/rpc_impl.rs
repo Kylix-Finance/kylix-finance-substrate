@@ -1,8 +1,10 @@
 use crate::rpc_api::LendingPoolApiServer;
 use jsonrpsee::core::RpcResult;
 use kylix_runtime::{
-	AccountId, AggregatedTotals, AssetId, BorrowedAsset, CollateralAsset, LendingPoolApi,
-	LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
+	lending::{
+		BorrowedAsset, CollateralAsset, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
+	},
+	AccountId, AggregatedTotals, AssetId, LendingPoolApi, LendingPoolInfo, UserLTVInfo,
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
