@@ -522,7 +522,8 @@ pub mod pallet {
 			let repayable_amount_u128 = index_ratio
 				.checked_mul(&FixedU128::from(borrowed_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
+				.into_inner()
+				/ FixedU128::accuracy();
 
 			let repayable_amount = repayable_amount_u128.saturated_into::<AssetBalanceOf<T>>();
 
@@ -1442,7 +1443,8 @@ pub mod pallet {
 			let borrowed_balance_reduction_u128 = repay_ratio
 				.checked_mul(&FixedU128::from(borrowed_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
+				.into_inner()
+				/ FixedU128::accuracy();
 
 			// Update the pool balances
 			let borrowed_balance_reduction =
@@ -1702,7 +1704,8 @@ pub mod pallet {
 			let release_collateral_amount_u128 = repay_ratio
 				.checked_mul(&FixedU128::from(collateral_balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
+				.into_inner()
+				/ FixedU128::accuracy();
 
 			let release_collateral_amount =
 				release_collateral_amount_u128.saturated_into::<AssetBalanceOf<T>>();
