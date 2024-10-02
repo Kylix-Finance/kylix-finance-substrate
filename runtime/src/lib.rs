@@ -22,7 +22,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, Bounded, IdentifyAccount, NumberFor, One,
+		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, One,
 		Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
@@ -426,7 +426,7 @@ decl_runtime_apis! {
 		fn get_user_ltv(account: AccountId) -> UserLTVInfo;
 		fn get_asset_wise_supplies(account: AccountId) -> (Vec<SuppliedAsset>, TotalDeposit);
 		fn get_asset_wise_borrows_collaterals(account: AccountId) -> (Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral);
-		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> FixedU128;
+		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> Option<FixedU128>;
 	}
 }
 
@@ -735,11 +735,11 @@ impl_runtime_apis! {
 			lending::Pallet::<Runtime>::get_asset_wise_borrows_collaterals(&account)
 		}
 
-		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> FixedU128{
+		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> Option<FixedU128>{
 			let base_asset = base_asset.unwrap_or(1); // If base_asset is None, default to USDT = 1
-			match lending::Pallet::<Runtime>::get_asset_price(asset, base_asset) {
-				Ok(price) => price,
-				Err(_) => FixedU128::max_value(),
+			match lending::Pallet::<Runtime>::get_asset_price(asset, base_asset){
+				Ok(price) => Some(price),
+				Err(_) => None
 			}
 		}
 	}

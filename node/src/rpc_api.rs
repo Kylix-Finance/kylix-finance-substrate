@@ -51,5 +51,9 @@ pub trait LendingPoolApi {
 	) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>;
 
 	#[method(name = "getAssetPrice")]
-	fn get_asset_price(&self, asset: AssetId, base_asset: Option<AssetId>) -> RpcResult<FixedU128>;
+	fn get_asset_price(
+		&self,
+		asset: AssetId,
+		base_asset: Option<AssetId>,
+	) -> RpcResult<Option<FixedU128>>;
 }

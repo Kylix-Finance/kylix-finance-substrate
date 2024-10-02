@@ -116,7 +116,11 @@ where
 		Ok(result)
 	}
 
-	fn get_asset_price(&self, asset: AssetId, base_asset: Option<AssetId>) -> RpcResult<FixedU128> {
+	fn get_asset_price(
+		&self,
+		asset: AssetId,
+		base_asset: Option<AssetId>,
+	) -> RpcResult<Option<FixedU128>> {
 		let api = self.client.runtime_api();
 		let best_block_hash = self.client.info().best_hash;
 
