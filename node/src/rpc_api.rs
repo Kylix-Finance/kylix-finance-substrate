@@ -1,7 +1,9 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
-	AccountId, AggregatedTotals, AssetId, BorrowedAsset, CollateralAsset, LendingPoolInfo,
-	SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit, UserLTVInfo,
+	lending::{
+		BorrowedAsset, CollateralAsset, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
+	},
+	AccountId, AggregatedTotals, AssetId, LendingPoolInfo, UserLTVInfo,
 };
 use sp_runtime::FixedU128;
 
@@ -49,5 +51,9 @@ pub trait LendingPoolApi {
 	) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>;
 
 	#[method(name = "getAssetPrice")]
-	fn get_asset_price(&self, asset: AssetId, base_asset: Option<AssetId>) -> RpcResult<FixedU128>;
+	fn get_asset_price(
+		&self,
+		asset: AssetId,
+		base_asset: Option<AssetId>,
+	) -> RpcResult<Option<FixedU128>>;
 }
