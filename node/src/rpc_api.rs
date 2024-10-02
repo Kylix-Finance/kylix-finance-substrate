@@ -1,9 +1,9 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
 	lending::{
-		BorrowedAsset, CollateralAsset, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
+		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
 	},
-	AccountId, AggregatedTotals, AssetId, LendingPoolInfo, UserLTVInfo,
+	AccountId, AssetId, UserLTVInfo,
 };
 use sp_runtime::FixedU128;
 
@@ -33,7 +33,10 @@ pub trait LendingPoolApi {
 	/// This method returns an `RpcResult` that may contain an error if the data cannot be retrieved
 	/// due to issues such as blockchain state access failures or other runtime errors.
 	#[method(name = "getLendingPools")]
-	fn get_lending_pools(&self) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
+	fn get_lending_pools(
+		&self,
+		asset_id: Option<AssetId>,
+		account_id: Option<AccountId>) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
 
 	#[method(name = "getUserLtv")]
 	fn get_user_ltv(&self, account: AccountId) -> RpcResult<UserLTVInfo>;
@@ -56,4 +59,5 @@ pub trait LendingPoolApi {
 		asset: AssetId,
 		base_asset: Option<AssetId>,
 	) -> RpcResult<Option<FixedU128>>;
+	
 }

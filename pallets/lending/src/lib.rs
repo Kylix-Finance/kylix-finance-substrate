@@ -99,6 +99,30 @@ pub mod weights;
 pub use weights::*;
 
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct LendingPoolInfo {
+	pub id: u32,
+	pub asset_id: u32,
+	pub asset: Vec<u8>,
+	pub asset_decimals: u32,
+	pub asset_icon: Vec<u8>,
+	pub asset_symbol: Vec<u8>,
+	pub collateral_q: u64,
+	pub utilization: FixedU128,
+	pub borrow_apy: FixedU128,
+	pub borrow_apy_s: FixedU128,
+	pub supply_apy: FixedU128,
+	pub supply_apy_s: FixedU128,
+	pub is_activated: bool,
+	pub user_asset_balance: Option<u128>
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
+pub struct AggregatedTotals {
+	pub total_supply: u128,
+	pub total_borrow: u128,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
 pub struct AssetInfo {
 	pub asset_id: u32,
 	pub asset_symbol: Vec<u8>,
@@ -1752,6 +1776,79 @@ pub mod pallet {
 			let asset_symbol = <pallet_assets::Pallet<T> as MetadataInspect<_>>::symbol(asset);
 			(asset_name, asset_decimals, asset_symbol)
 		}
+
+		pub fn get_lending_pools(asset: Option<AssetIdOf<T>>, account: Option<&T::AccountId>) -> (Vec<LendingPoolInfo>, AggregatedTotals) {
+			let mut total_supply: u128 = 0;
+			let mut total_borrow: u128 = 0;
+
+			// Collect all the lending pools and aggregate totals in a single iteration
+			let pools: Vec<LendingPoolInfo> = LendingPoolStorage::<T>::iter()
+				.filter(|(_, pool)| {
+					match asset {
+						Some(asset_id) => pool.lend_token_id == asset_id,
+						None => true, // If `asset` is `None`, include all pools
+					}
+				})
+				.map(|(_, pool)| {
+					// Retrieve metadata for the pool's asset
+					let (asset_name, asset_decimals, asset_symbol) = Self::get_metadata(pool.lend_token_id);
+					let asset_icon = "<url>/dot.svg".as_bytes().to_vec();
+					
+					let user_asset_balance = match account {
+						Some(account) => {
+							match Self::get_asset_balance(&account, pool.lend_token_id) {
+								Ok(balance) => Some(balance.saturated_into::<u128>()),
+								Err(_) => None,
+							}
+						},
+						_ => None,
+					};
+
+					let equivalent_asset_supply_amount = Self::get_equivalent_asset_amount(
+						1, //USDT
+						pool.lend_token_id,
+						pool.reserve_balance,
+					).unwrap_or_default()
+					;
+					let equivalent_asset_borrow_amount = Self::get_equivalent_asset_amount(
+						1, //USDT
+						pool.lend_token_id,
+						pool.borrowed_balance,
+					).unwrap_or_default();
+
+					// Accumulate totals
+					total_supply = total_supply.saturating_add(equivalent_asset_supply_amount.saturated_into::<u128>());
+					total_borrow = total_borrow.saturating_add(equivalent_asset_borrow_amount.saturated_into::<u128>());
+
+					LendingPoolInfo {
+						id: pool.id,
+						asset_id: pool.lend_token_id,
+						asset: asset_name,
+						asset_decimals: asset_decimals as u32,
+						asset_symbol: asset_symbol,
+						asset_icon: asset_icon,
+						collateral_q: pool.collateral_factor.deconstruct().into(),
+						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
+						borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
+						borrow_apy_s: FixedU128::zero(), // Set to 0 for now
+						supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
+						supply_apy_s: FixedU128::zero(), // Set to 0 for now
+						is_activated: pool.activated,
+						user_asset_balance
+					}
+				})
+				.collect();
+
+			let aggregated_totals = AggregatedTotals {
+				total_supply,
+				total_borrow,
+			};
+
+			// Return the pools and aggregated totals
+			(pools, aggregated_totals)
+		}
+
+
 
 		pub fn get_asset_wise_supplies(
 			account: &T::AccountId,

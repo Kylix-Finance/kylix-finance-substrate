@@ -2,9 +2,9 @@ use crate::rpc_api::LendingPoolApiServer;
 use jsonrpsee::core::RpcResult;
 use kylix_runtime::{
 	lending::{
-		BorrowedAsset, CollateralAsset, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
+		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
 	},
-	AccountId, AggregatedTotals, AssetId, LendingPoolApi, LendingPoolInfo, UserLTVInfo,
+	AccountId, AssetId, LendingPoolApi, UserLTVInfo,
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -61,7 +61,7 @@ where
 	/// # Errors
 	///
 	/// Returns an error if the runtime API call fails.
-	fn get_lending_pools(&self) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)> {
+	fn get_lending_pools(&self, asset_id: Option<AssetId>, account_id: Option<AccountId>,) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)> {
 		// Access the runtime API.
 		let api = self.client.runtime_api();
 
@@ -70,7 +70,7 @@ where
 
 		// Call the `get_lending_pools` method from the runtime API.
 		let result = api
-			.get_lending_pools(best_block_hash)
+			.get_lending_pools(best_block_hash, asset_id, account_id)
 			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
 
 		// Return the result.

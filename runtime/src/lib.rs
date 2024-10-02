@@ -10,8 +10,7 @@ use codec::{Decode, Encode};
 use frame_support::traits::AsEnsureOriginWithArg;
 use frame_system::{EnsureRoot, EnsureSigned};
 use lending::{
-	fungibles::metadata::Inspect, BorrowedAsset, CollateralAsset, FixedU128, SuppliedAsset,
-	TotalBorrow, TotalCollateral, TotalDeposit,
+	AggregatedTotals, BorrowedAsset, CollateralAsset, FixedU128, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit
 };
 use pallet_grandpa::AuthorityId as GrandpaId;
 use scale_info::TypeInfo;
@@ -26,7 +25,7 @@ use sp_runtime::{
 		Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedU64, MultiSignature,
+	ApplyExtrinsicResult, MultiSignature,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -329,31 +328,10 @@ impl pallet_assets::Config for Runtime {
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
-pub struct LendingPoolInfo {
-	pub id: u32,
-	pub asset_id: u32,
-	pub asset: Vec<u8>,
-	pub asset_decimals: u32,
-	pub asset_symbol: Vec<u8>,
-	pub collateral_q: u64,
-	pub utilization: FixedU64,
-	pub borrow_apy: FixedU128,
-	pub supply_apy: FixedU128,
-	pub is_activated: bool,
-	pub balance: u128,
-}
-
-#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
 pub struct UserLTVInfo {
 	pub current_ltv: FixedU128,
 	pub sale_ltv: FixedU128,
 	pub liquidation_ltv: FixedU128,
-}
-
-#[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
-pub struct AggregatedTotals {
-	pub total_supply: u128,
-	pub total_borrow: u128,
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -422,7 +400,7 @@ mod benches {
 
 decl_runtime_apis! {
 	pub trait LendingPoolApi {
-		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals);
+		fn get_lending_pools(asset: Option<AssetId>, account: Option<AccountId>) -> (Vec<LendingPoolInfo>, AggregatedTotals);
 		fn get_user_ltv(account: AccountId) -> UserLTVInfo;
 		fn get_asset_wise_supplies(account: AccountId) -> (Vec<SuppliedAsset>, TotalDeposit);
 		fn get_asset_wise_borrows_collaterals(account: AccountId) -> (Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral);
@@ -671,60 +649,8 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn get_lending_pools() -> (Vec<LendingPoolInfo>, AggregatedTotals) {
-			let mut total_supply: u128 = 0;
-			let mut total_borrow: u128 = 0;
-
-			// Collect all the lending pools and aggregate totals in a single iteration
-			let pools: Vec<LendingPoolInfo> = lending::LendingPoolStorage::<Runtime>::iter()
-				.map(|(_, pool)| {
-					// Use the InspectMetadata trait to get the asset name and decimals
-					let asset_name = pallet_assets::Pallet::<Runtime>::name(pool.lend_token_id);
-					let asset_decimals = pallet_assets::Pallet::<Runtime>::decimals(pool.lend_token_id);
-					let asset_symbol = pallet_assets::Pallet::<Runtime>::symbol(pool.lend_token_id);
-
-					// Calculate the balance=reserve_balance+borrowed_balance
-					let balance = pool.reserve_balance.saturating_add(pool.borrowed_balance).into();
-
-					let equivalent_asset_supply_amount = lending::Pallet::<Runtime>::get_equivalent_asset_amount(
-						pool.lend_token_id,
-						1, //USDT
-						pool.reserve_balance,
-					).unwrap_or_default()
-					;
-					let equivalent_asset_borrow_amount = lending::Pallet::<Runtime>::get_equivalent_asset_amount(
-						pool.lend_token_id,
-						1, //USDT
-						pool.borrowed_balance,
-					).unwrap_or_default();
-
-					// Accumulate totals
-					total_supply = total_supply.saturating_add(equivalent_asset_supply_amount);
-					total_borrow = total_borrow.saturating_add(equivalent_asset_borrow_amount);
-
-					LendingPoolInfo {
-						id: pool.id,
-						asset_id: pool.lend_token_id,
-						asset: asset_name,
-						asset_decimals: asset_decimals as u32,
-						asset_symbol: asset_symbol,
-						collateral_q: pool.collateral_factor.deconstruct().into(),
-						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
-						borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
-						supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
-						is_activated: pool.activated,
-						balance,
-					}
-				})
-				.collect();
-
-			let aggregated_totals = AggregatedTotals {
-				total_supply,
-				total_borrow,
-			};
-
-			// Return the pools and aggregated totals
-			(pools, aggregated_totals)
+		fn get_lending_pools(asset: Option<AssetId>, account: Option<AccountId>) -> (Vec<LendingPoolInfo>, AggregatedTotals) {
+			lending::Pallet::<Runtime>::get_lending_pools(asset, account.as_ref())
 		}
 
 		fn get_asset_wise_supplies(account: AccountId) -> (Vec<SuppliedAsset>, TotalDeposit) {
