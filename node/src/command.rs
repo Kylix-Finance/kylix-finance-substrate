@@ -70,7 +70,7 @@ where
 	// Use the runtime to execute the async RPC call
 	let result = runtime.block_on(async {
 		let lending_pool_rpc = LendingPoolApiImpl::new(client.clone());
-		lending_pool_rpc.get_lending_pools()
+		lending_pool_rpc.get_lending_pools(None, None)
 	});
 
 	match result {
