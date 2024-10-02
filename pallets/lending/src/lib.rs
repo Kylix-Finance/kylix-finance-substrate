@@ -1658,7 +1658,7 @@ pub mod pallet {
 		/// check if price of asset available in terms of collateral asset then
 		/// return `collateral_balance / price`
 		/// else fallback to a common base asset
-		/// get the prices of both assets in terms of asset 0 (USDT)  and
+		/// get the prices of both assets in terms of asset 1 (USDT)  and
 		/// return `collateral_asset_price * collateral_balance / asset_price`
 		/// else
 		/// return error `AssetPriceNotSet`
@@ -1676,8 +1676,8 @@ pub mod pallet {
 					.ok_or(Error::<T>::OverflowError)?
 			} else {
 				let asset_price =
-					AssetPrices::<T>::get((asset, 0)).ok_or(Error::<T>::AssetPriceNotSet)?;
-				let collateral_price = AssetPrices::<T>::get((collateral_asset, 0))
+					AssetPrices::<T>::get((asset, 1)).ok_or(Error::<T>::AssetPriceNotSet)?;
+				let collateral_price = AssetPrices::<T>::get((collateral_asset, 1))
 					.ok_or(Error::<T>::AssetPriceNotSet)?;
 
 				collateral_price
@@ -1788,8 +1788,8 @@ pub mod pallet {
 
 					// Calculate the equivalent supplied amount
 					let equivalent_supplied_amount = Self::get_equivalent_asset_amount(
-						pool.lend_token_id,
 						1, // USDT
+						pool.lend_token_id,
 						supplied_amount,
 					)
 					.unwrap_or_default();
@@ -1870,8 +1870,8 @@ pub mod pallet {
 
 				// Calculate equivalent borrowed amount in USDT (or any other base token)
 				let equivalent_borrowed_amount = Self::get_equivalent_asset_amount(
-					borrowed_asset,
 					1, // USDT
+					borrowed_asset,
 					borrowed_amount,
 				)
 				.unwrap_or_default();
@@ -1909,8 +1909,8 @@ pub mod pallet {
 
 				// Calculate equivalent collateral amount in USDT
 				let equivalent_collateral_amount = Self::get_equivalent_asset_amount(
-					collateral_asset,
 					1, // USDT
+					collateral_asset,
 					collateral_balance,
 				)
 				.unwrap_or_default();

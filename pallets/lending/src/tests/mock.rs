@@ -174,16 +174,23 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 		let mut unique_assets = HashSet::new();
 		let mut assets = vec![];
+		//Genesis metadata: id, name, symbol, decimals
+		let mut metadata = vec![]; 
 		for (asset_id, _, _) in self.endowed_balances.clone().into_iter() {
 			if unique_assets.insert(asset_id) {
 				// Only push the asset if it wasn't already in the set
 				assets.push((asset_id, ADMIN, true, 1));
+				metadata.push((asset_id, 
+					format!("{}Name", asset_id).into_bytes(), 
+					format!("{}Symbol", asset_id).into_bytes(), 
+					18)
+				);
 			}
 		}
 
 		pallet_assets::GenesisConfig::<Test> {
 			assets,
-			metadata: vec![],
+			metadata,
 			accounts: self.endowed_balances,
 		}
 		.assimilate_storage(&mut t)
