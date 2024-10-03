@@ -1,5 +1,5 @@
 use crate::{tests::mock::*, AssetPool};
-use frame_support::{assert_err, assert_ok};
+use frame_support::assert_ok;
 use num_traits::Zero;
 use sp_runtime::{FixedPointNumber, FixedU128};
 
@@ -59,7 +59,7 @@ fn test_compute_user_ltv_on_max_borrow() {
 
 			let (current_ltv, sale_ltv, liq_ltv) = TemplateModule::compute_user_ltv(&BOB);
 
-			let expected_current_ltv = FixedU128::saturating_from_rational(10_000u128, 100_000u128);
+			let expected_current_ltv = FixedU128::saturating_from_rational(dot_borrow_amount, ksm_collateral_amount * 2);
 			let expected_sale_ltv = FixedU128::saturating_from_rational(50_000u128, 100_000u128);
 			let expected_liq_ltv = FixedU128::saturating_from_rational(80_000u128, 100_000u128);
 

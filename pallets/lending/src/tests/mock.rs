@@ -9,7 +9,6 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
-use log::LevelFilter;
 use once_cell::sync::OnceCell;
 use sp_core::H256;
 use sp_runtime::{

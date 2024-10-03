@@ -1626,8 +1626,8 @@ pub mod pallet {
 
 				// Convert repayable_amount to USDT equivalent
 				let borrowed_usdt = match Self::get_equivalent_asset_amount(
-					borrowed_asset,
 					1u32.into(), // Assuming 1 is the asset ID for USDT
+					borrowed_asset,
 					repayable_amount,
 				) {
 					Ok(amount) => amount,
@@ -1639,8 +1639,8 @@ pub mod pallet {
 
 				// Convert collateral to USDT equivalent
 				let collateral_usdt = match Self::get_equivalent_asset_amount(
-					collateral_asset,
 					1u32.into(), // Assuming 1 is the asset ID for USDT
+					collateral_asset,
 					loan.collateral_balance,
 				) {
 					Ok(amount) => amount,
