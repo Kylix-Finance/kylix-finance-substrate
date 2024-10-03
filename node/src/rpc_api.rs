@@ -7,57 +7,96 @@ use kylix_runtime::{
 };
 use sp_runtime::FixedU128;
 
-/// Defines the custom RPC interface for the lending pools.
-/// This trait specifies the structure and methods for the RPC interface that clients
-/// can use to interact with lending pools on the blockchain.
+/// Custom RPC interface for lending pool interactions.
 ///
-/// The trait is marked with the `#[rpc(client, server)]` attribute, which automatically
-/// generates both the client and server implementations for this RPC interface. This
-/// attribute simplifies the creation of RPC methods that can be called by clients and
-/// implemented by servers.
+/// This trait outlines the RPC methods available for interacting with lending pools 
+/// on the blockchain. It is marked with the `#[rpc(client, server)]` attribute to 
+/// automatically generate client and server implementations for each RPC method.
 #[rpc(client, server)]
 pub trait LendingPoolApi {
-	/// Fetches the list of lending pools and their aggregated totals.
+	/// Retrieves lending pool information and aggregated totals.
 	///
-	/// This method is invoked by clients to retrieve information about all available lending pools,
-	/// including details such as pool identifiers, associated assets, and aggregated totals.
+	/// Returns details of all lending pools, including pool identifiers, associated assets, 
+	/// and their aggregated totals.
 	///
 	/// # Returns
 	///
-	/// * `RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>` - A result containing a tuple:
-	///   - A vector of `LendingPoolInfo` structs, each representing the details of a lending pool.
-	///   - An `AggregatedTotals` struct containing aggregated data for all lending pools.
+	/// * `RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>` - A result containing:
+	///   - A vector of `LendingPoolInfo`, each representing a lending pool.
+	///   - `AggregatedTotals`, which aggregates data for all lending pools.
 	///
 	/// # Errors
 	///
-	/// This method returns an `RpcResult` that may contain an error if the data cannot be retrieved
-	/// due to issues such as blockchain state access failures or other runtime errors.
+	/// Returns an `RpcResult` containing an error if data retrieval fails, e.g., due to 
+	/// blockchain state access issues.
 	#[method(name = "getLendingPools")]
 	fn get_lending_pools(
 		&self,
 		asset_id: Option<AssetId>,
-		account_id: Option<AccountId>) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
+		account_id: Option<AccountId>,
+	) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)>;
 
+	/// Retrieves the Loan-to-Value (LTV) information for a user.
+	///
+	/// # Parameters
+	///
+	/// * `account` - The `AccountId` of the user.
+	///
+	/// # Returns
+	///
+	/// * `RpcResult<UserLTVInfo>` - The LTV information for the user.
 	#[method(name = "getUserLtv")]
 	fn get_user_ltv(&self, account: AccountId) -> RpcResult<UserLTVInfo>;
 
+	/// Retrieves the supplied assets and total deposits for a user.
+	///
+	/// # Parameters
+	///
+	/// * `account` - The `AccountId` of the user.
+	///
+	/// # Returns
+	///
+	/// * `RpcResult<(Vec<SuppliedAsset>, TotalDeposit)>` - A tuple containing:
+	///   - A vector of `SuppliedAsset`.
+	///   - The `TotalDeposit` made by the user.
 	#[method(name = "getAssetWiseSupplies")]
 	fn get_asset_wise_supplies(
 		&self,
 		account: AccountId,
 	) -> RpcResult<(Vec<SuppliedAsset>, TotalDeposit)>;
 
+	/// Retrieves borrowed assets, collaterals, total borrow, and total collateral for a user.
+	///
+	/// # Parameters
+	///
+	/// * `account` - The `AccountId` of the user.
+	///
+	/// # Returns
+	///
+	/// * `RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>` - A tuple containing:
+	///   - A vector of `BorrowedAsset`.
+	///   - A vector of `CollateralAsset`.
+	///   - `TotalBorrow` and `TotalCollateral` values for the user.
 	#[method(name = "getAssetWiseBorrowsCollaterals")]
 	fn get_asset_wise_borrows_collaterals(
 		&self,
 		account: AccountId,
 	) -> RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>;
 
+	/// Fetches the price of a specified asset relative to a base asset.
+	///
+	/// # Parameters
+	///
+	/// * `asset` - The `AssetId` for which the price is to be retrieved.
+	/// * `base_asset` - An optional `AssetId` representing the base asset for the price comparison.
+	///
+	/// # Returns
+	///
+	/// * `RpcResult<Option<FixedU128>>` - The price as a `FixedU128`, if available.
 	#[method(name = "getAssetPrice")]
 	fn get_asset_price(
 		&self,
 		asset: AssetId,
 		base_asset: Option<AssetId>,
 	) -> RpcResult<Option<FixedU128>>;
-	
 }
