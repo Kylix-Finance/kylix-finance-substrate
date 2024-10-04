@@ -512,20 +512,14 @@ pub mod pallet {
 			&self,
 			loan: &UserBorrow<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let index_ratio = self
-				.borrow_index
-				.checked_div(&loan.borrow_index_at_borrow_time)
-				.ok_or(Error::<T>::OverflowError)?;
+			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into();
 
-			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
-
-			let repayable_amount_u128 = index_ratio
-				.checked_mul(&FixedU128::from(borrowed_balance_u128))
+			let repayable_amount_u128 = FixedU128::from_inner(borrowed_balance_u128)
+				.checked_mul(&self.borrow_index)
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				/ FixedU128::accuracy();
+				.into_inner();
 
-			let repayable_amount = repayable_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+			let repayable_amount = repayable_amount_u128.saturated_into();
 
 			Ok(repayable_amount)
 		}
@@ -1420,7 +1414,7 @@ pub mod pallet {
 			let repayable_balance = pool.repayable_amount(&loan)?;
 
 			// Determine the payment amount and whether it's a full payment
-			let (pay, is_full_payment) = if balance <= repayable_balance {
+			let (pay, is_full_payment) = if balance < repayable_balance {
 				(balance, false)
 			} else {
 				(repayable_balance, true)
