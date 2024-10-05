@@ -33,10 +33,10 @@ fn test_supply_succeeds_for_activated_lending_pool() {
 			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(ALICE), DOT, supply_amount),);
 			// Check supply events
 			System::assert_last_event(
-				Event::DepositSupplied { who: ALICE, asset: DOT, balance: supply_amount }.into(),
+				Event::LiquiditySupplied { who: ALICE, asset: DOT, balance: supply_amount }.into(),
 			);
-			assert!(System::events().iter().any(|record| record.event ==
-				Event::LPTokenMinted {
+			assert!(System::events().iter().any(|record| record.event
+				== Event::LPTokenMinted {
 					who: ALICE,
 					asset: LENDING_POOL_TOKEN,
 					balance: amount
@@ -142,7 +142,7 @@ fn test_supply_succeeds_for_active_pool() {
 			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500));
 
 			System::assert_last_event(
-				Event::DepositSupplied { who: BOB, asset: DOT, balance: 500 }.into(),
+				Event::LiquiditySupplied { who: BOB, asset: DOT, balance: 500 }.into(),
 			);
 		});
 }
@@ -181,7 +181,7 @@ fn test_withdraw_all_tokens_succeeds() {
 			assert_ok!(TemplateModule::withdraw(RuntimeOrigin::signed(BOB), DOT, withdraw_amount));
 
 			System::assert_last_event(
-				Event::DepositWithdrawn { who: BOB, balance: withdraw_amount }.into(),
+				Event::LiquidityWithdrawn { who: BOB, asset: DOT, balance: withdraw_amount }.into(),
 			);
 
 			// Check final balances
@@ -265,6 +265,8 @@ fn test_partial_withdraw_succeeds() {
 			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 500));
 			assert_ok!(TemplateModule::withdraw(RuntimeOrigin::signed(BOB), DOT, 250));
 
-			System::assert_last_event(Event::DepositWithdrawn { who: BOB, balance: 250 }.into());
+			System::assert_last_event(
+				Event::LiquidityWithdrawn { who: BOB, asset: DOT, balance: 250 }.into(),
+			);
 		});
 }

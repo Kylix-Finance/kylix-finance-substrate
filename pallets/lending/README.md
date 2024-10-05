@@ -67,8 +67,8 @@ This function will return an error in the following scenarios:
 
 If the function succeeds, it will trigger the following events:
 
-* `LendingPoolAdded(who, asset_a)` if a new lending pool was created
-* `DepositSupplied(who, asset_a, amount_a)` after the liquidity has been successfully added
+* `LendingPoolAdded(who, asset)` if a new lending pool was created
+* `LiquiditySupplied(who, asset, balance)` after the liquidity has been successfully added
 
 **Activate Lending Pool**
 =========================
@@ -134,7 +134,7 @@ This function will return an error in the following scenarios:
 
 If the function succeeds, it will trigger the following event:
 
-* `DepositSupplied(who, asset, balance)` if the lending pool has been successfully supplied.
+* `LiquiditySupplied(who, asset, balance)` if the lending pool has been successfully supplied.
 
 **Withdraw Liquidity**
 =====================
@@ -168,7 +168,7 @@ This function will return an error in the following scenarios:
 
 If the function succeeds, it will trigger the following event:
 
-* `DepositWithdrawn(who, balance)` if the liquidity was successfully withdrawn from the lending pool.
+* `LiquidityWithdrawn(who, asset, balance)` if the liquidity was successfully withdrawn from the lending pool.
 
 **Borrow Liquidity**
 =====================
@@ -202,7 +202,7 @@ This function will return an error in the following scenarios:
 
 If the function succeeds, it will trigger the following event:
 
-* `DepositBorrowed(who, balance)` if the liquidity was successfully borrowed from the lending pool.
+* `Borrowed(who, borrowed_asset_id, borrowed_balance, collateral_asset_id, collateral_balance)` if the liquidity was successfully borrowed from the lending pool.
 
 **Repay Liquidity**
 =====================
@@ -236,7 +236,7 @@ This function will return an error in the following scenarios:
 
 If the function succeeds, it will trigger the following event:
 
-* `DepositRepaid(who, balance)` if the liquidity was successfully repaid to the lending pool.
+* `Repaid(who, repaid_asset_id, repaid_balance, collateral_asset_id, collateral_balance)` if the liquidity was successfully repaid to the lending pool.
 
 **Claim Rewards**
 ================
@@ -355,15 +355,15 @@ The `set_asset_price` function allows a user to set the price of one asset in te
 
 **Functionality**
 
-* Sets the relative price of one asset (`asset_1`) in terms of another asset (`asset_2`)
+* Sets the relative price of one asset (`asset`) in terms of another asset (`base_asset`)
 * Enables users to specify the price of an asset in terms of another asset
 
 **Parameters**
 
 * `origin`: The transaction origin (must be a signed extrinsic)
-* `asset_1`: The identifier for the first asset (the asset whose price is being set)
-* `asset_2`: The identifier for the second asset (the asset relative to which the price is measured)
-* `price`: The price of `asset_1` in terms of `asset_2` (must be a non-zero value)
+* `asset`: The identifier for the first asset (the asset whose price is being set)
+* `base_asset`: The identifier for the second asset (the asset relative to which the price is measured)
+* `price`: The price of `asset` in terms of `base_asset` (must be a non-zero value)
 
 **Errors**
 
@@ -371,14 +371,14 @@ The `set_asset_price` function allows a user to set the price of one asset in te
 * 
 **Events**
 
-* `AssetPriceAdded { asset_1, asset_2, price }`: This event is emitted after the price is successfully set. It contains the asset identifiers and the new price.
+* `AssetPriceAdded { asset, base_asset, price }`: This event is emitted after the price is successfully set. It contains the asset identifiers and the new price.
 
 
 # Events
 
 This pallet emits the following events:
 
-### DepositSupplied
+### LiquiditySupplied
 
  **Description**: Signals that a user has supplied assets to the lending pool.
  **Fields**:
@@ -386,26 +386,33 @@ This pallet emits the following events:
   - `asset`: ID of the asset supplied.
   - `balance`: Amount of the asset supplied.
 
-### DepositWithdrawn
+### LiquidityWithdrawn
 
 **Description**: Indicates that a user has withdrawn assets from the lending pool.
 **Fields**:
   - `who`: Account ID of the user who withdrew the assets.
+  - `asset`: ID of the asset withdrawn.
   - `balance`: Amount of the assets withdrawn.
 
-### DepositBorrowed
+### Borrowed
 
 **Description**: Denotes that a user has borrowed assets from the lending pool.
 **Fields**:
   - `who`: Account ID of the user who borrowed the assets.
-  - `balance`: Amount of the assets borrowed.
+  - `borrowed_asset_id`: Asset ID of the borrowed asset.
+	-	`borrowed_balance`: Amount of borrow.
+	- `collateral_asset_id`: Asset ID of the collateral asset.
+	-	`collateral_balance`: Amount of collateral asset.
 
-### DepositRepaid
+### Repaid
 
 **Description**: Indicates that a user has repaid borrowed assets to the lending pool.
 **Fields**:
-  - `who`: Account ID of the user who repaid the assets.
-  - `balance`: Amount of the assets repaid.
+  - `who`: Account ID of the user who repaid the loan.
+  - `borrowed_asset_id`: Asset ID of the repaid asset.
+	-	`borrowed_balance`: Amount of repayment.
+	- `collateral_asset_id`: Asset ID of the collateral asset released.
+	-	`collateral_balance`: Amount of collateral asset.
 
 ### RewardsClaimed
 
@@ -426,7 +433,7 @@ This pallet emits the following events:
 **Description**: Signals the removal of a lending pool.
 **Fields**:
   - `who`: Account ID of the user who removed the lending pool.
-
+  - `asset`: ID of the asset associated with the lending pool.
 ### LendingPoolActivated
 
 **Description**: Indicates that a lending pool has been activated.
@@ -467,8 +474,8 @@ This pallet emits the following events:
 
 **Description**: Signals the addition of the price of an asset.
 **Fields**:
-  - `asset_1`: ID of the first asset in the pair.
-  - `asset_2`: ID of the second asset in the pair.
+  - `asset`: ID of the first asset in the pair.
+  - `base_asset`: ID of the second asset in the pair.
   - `price`: Fixed price of the asset pair.
 
 # Errors
