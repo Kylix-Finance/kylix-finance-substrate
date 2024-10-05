@@ -652,19 +652,68 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		DepositSupplied { who: T::AccountId, asset: AssetIdOf<T>, balance: BalanceOf<T> },
-		DepositWithdrawn { who: T::AccountId, balance: BalanceOf<T> },
-		DepositBorrowed { who: T::AccountId, balance: BalanceOf<T> },
-		DepositRepaid { who: T::AccountId, balance: BalanceOf<T> },
-		RewardsClaimed { who: T::AccountId, balance: BalanceOf<T> },
-		LendingPoolAdded { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolRemoved { who: T::AccountId },
-		LendingPoolActivated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolDeactivated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolRateModelUpdated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolKinkUpdated { who: T::AccountId, asset: AssetIdOf<T> },
-		LPTokenMinted { who: T::AccountId, asset: AssetIdOf<T>, balance: AssetBalanceOf<T> },
-		AssetPriceAdded { asset_1: AssetIdOf<T>, asset_2: AssetIdOf<T>, price: FixedU128 },
+		LiquiditySupplied {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: BalanceOf<T>,
+		},
+		LiquidityWithdrawn {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: BalanceOf<T>,
+		},
+		Borrowed {
+			who: T::AccountId,
+			borrowed_asset_id: AssetIdOf<T>,
+			borrowed_balance: BalanceOf<T>,
+			collateral_asset_id: AssetIdOf<T>,
+			collateral_balance: BalanceOf<T>,
+		},
+		Repaid {
+			who: T::AccountId,
+			repaid_asset_id: AssetIdOf<T>,
+			repaid_balance: BalanceOf<T>,
+			collateral_asset_id: AssetIdOf<T>,
+			collateral_balance: BalanceOf<T>,
+		},
+		RewardsClaimed {
+			who: T::AccountId,
+			balance: BalanceOf<T>,
+		},
+		LendingPoolAdded {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolRemoved {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolActivated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolDeactivated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolRateModelUpdated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolKinkUpdated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LPTokenMinted {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: AssetBalanceOf<T>,
+		},
+		AssetPriceAdded {
+			asset: AssetIdOf<T>,
+			base_asset: AssetIdOf<T>,
+			price: FixedU128,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -736,8 +785,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers two events:
 		///
-		/// * `LendingPoolAdded(who, asset_a)` if a new lending pool was created.
-		/// * `DepositSupplied(who, asset_a, amount_a)` after the liquidity has been successfully
+		/// * `LendingPoolAdded(who, asset)` if a new lending pool was created.
+		/// * `LiquiditySupplied(who, asset, balance)` after the liquidity has been successfully
 		///   added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
@@ -750,7 +799,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			Self::do_create_lending_pool(&who, id, asset, balance)?;
 			Self::deposit_event(Event::LendingPoolAdded { who: who.clone(), asset });
-			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
+			Self::deposit_event(Event::LiquiditySupplied { who, asset, balance });
 			Ok(())
 		}
 
@@ -778,7 +827,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolActivated(who, asset_a)` if the lending pool was activated.
+		/// * `LendingPoolActivated(who, asset)` if the lending pool was activated.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::default())]
 		pub fn activate_lending_pool(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
@@ -813,7 +862,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositSupplied(who, asset, balance)` if the lending pool has been supplied.
+		/// * `LiquiditySupplied(who, asset, balance)` if the lending pool has been supplied.
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::default())]
 		pub fn supply(
@@ -823,7 +872,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_supply(&who, asset, balance)?;
-			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
+			Self::deposit_event(Event::LiquiditySupplied { who, asset, balance });
 			Ok(())
 		}
 
@@ -853,7 +902,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositWithdrawn(who, balance)` if the lending pool was activated.
+		/// * `LiquidityWithdrawn(who, asset, balance)` if the lending pool was activated.
 		#[pallet::call_index(3)]
 		#[pallet::weight(Weight::default())]
 		pub fn withdraw(
@@ -863,7 +912,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdrawal(&who, asset, balance)?;
-			Self::deposit_event(Event::DepositWithdrawn { who, balance });
+			Self::deposit_event(Event::LiquidityWithdrawn { who, asset, balance });
 			Ok(())
 		}
 
@@ -893,7 +942,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositBorrowed(who, balance)` if the lending pool was activated.
+		/// * `Borrowed(who, borrowed_asset_id, borrowed_balance, collateral_asset_id, collateral_balance)`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::default())]
 		pub fn borrow(
@@ -905,7 +954,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_borrow(&who, asset, balance, collateral_asset, collateral_balance)?;
-			Self::deposit_event(Event::DepositBorrowed { who, balance });
 			Ok(())
 		}
 
@@ -935,7 +983,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositRepaid(who, balance)` if the lending pool was activated.
+		/// * `Repaid(who, repaid_asset_id, repaid_balance, collateral_asset_id, collateral_balance )`.
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::default())]
 		pub fn repay(
@@ -946,7 +994,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_repay(&who, asset, balance, collateral_asset)?;
-			Self::deposit_event(Event::DepositRepaid { who, balance });
 			Ok(())
 		}
 
@@ -1002,7 +1049,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolDeactivated(who, asset_a)` if the lending pool was deactivated.
+		/// * `LendingPoolDeactivated(who, asset)` if the lending pool was deactivated.
 		#[pallet::call_index(7)]
 		#[pallet::weight(Weight::default())]
 		pub fn deactivate_lending_pool(
@@ -1074,19 +1121,19 @@ pub mod pallet {
 		/// Sets the price of one asset in terms of another asset.
 		///
 		/// The `set_asset_price` extrinsic allows a user to specify the relative price of one asset
-		/// (`asset_1`) in terms of another asset (`asset_2`).
+		/// (`asset`) in terms of another asset (`base_asset`).
 		///
 		/// # Parameters
 		/// - `origin`: The transaction origin. This must be a signed extrinsic.
-		/// - `asset_1`: The identifier for the first asset. This is the asset whose price is being
+		/// - `asset`: The identifier for the first asset. This is the asset whose price is being
 		///   set.
-		/// - `asset_2`: The identifier for the second asset. This is the asset relative to which
+		/// - `base_asset`: The identifier for the second asset. This is the asset relative to which
 		///   the price is measured.
-		/// - `price`: The price of `asset_1` in terms of `asset_2`. This must be a non-zero value
+		/// - `price`: The price of `asset` in terms of `base_asset`. This must be a non-zero value
 		///   to avoid errors.
 		///
 		/// # Events
-		/// - `AssetPriceAdded { asset_1, asset_2, price }`: This event is emitted after the price
+		/// - `AssetPriceAdded { asset, base_asset, price }`: This event is emitted after the price
 		///   is successfully set. It contains the asset identifiers and the new price.
 		///
 		/// # Errors
@@ -1097,18 +1144,18 @@ pub mod pallet {
 		#[pallet::weight(Weight::default())]
 		pub fn set_asset_price(
 			origin: OriginFor<T>,
-			asset_1: AssetIdOf<T>,
-			asset_2: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
+			base_asset: AssetIdOf<T>,
 			price: FixedU128,
 		) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 			// price should not be zero
 			ensure!(price > FixedU128::zero(), Error::<T>::InvalidAssetPrice);
 
-			AssetPrices::<T>::set((asset_1, asset_2), Some(price));
+			AssetPrices::<T>::set((asset, base_asset), Some(price));
 
 			// Emit an event.
-			Self::deposit_event(Event::AssetPriceAdded { asset_1, asset_2, price });
+			Self::deposit_event(Event::AssetPriceAdded { asset, base_asset, price });
 
 			Ok(())
 		}
@@ -1390,7 +1437,13 @@ pub mod pallet {
 				collateral_balance,
 				Preservation::Preserve,
 			)?;
-
+			Self::deposit_event(Event::Borrowed {
+				who: who.clone(),
+				borrowed_asset_id: asset,
+				borrowed_balance: balance,
+				collateral_asset_id: collateral_asset,
+				collateral_balance,
+			});
 			Ok(())
 		}
 
@@ -1494,6 +1547,14 @@ pub mod pallet {
 			// Update the storage with the new pool state
 			LendingPoolStorage::<T>::insert(&asset_pool, pool);
 
+			// Emit event with the  actual repay amount
+			Self::deposit_event(Event::Repaid {
+				who: who.clone(),
+				repaid_asset_id: asset,
+				repaid_balance: pay,
+				collateral_asset_id: collateral_asset,
+				collateral_balance: release_collateral_amount,
+			});
 			Ok(())
 		}
 
