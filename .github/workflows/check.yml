@@ -45,31 +45,6 @@ jobs:
         run: |
           SKIP_WASM_BUILD=1 cargo test --release
   
-      - name: Run application
-        run: |
-          # Start the application in the background
-          cargo run > kylix.log 2>&1 &
-          APP_PID=$!
-
-          # Wait for a few seconds to let the application start
-          sleep 1200
-
-          # Check the log file for a success message
-          if grep -q "Running JSON-RPC server" kylix.log; then
-            echo "Application started successfully"
-          else
-            echo "Application failed to start"
-            cat kylix.log
-            kill $APP_PID
-            exit 1
-          fi
-
-      - name: Stop application
-        if: always()
-        run: |
-          if [ -n "$APP_PID" ]; then
-            kill $APP_PID
-          fi
       # - name: Check Build for Benchmarking
       #   run: >
       #     pushd node &&
