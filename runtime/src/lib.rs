@@ -405,6 +405,7 @@ decl_runtime_apis! {
 		fn get_asset_wise_supplies(account: AccountId) -> (Vec<SuppliedAsset>, TotalDeposit);
 		fn get_asset_wise_borrows_collaterals(account: AccountId) -> (Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral);
 		fn get_asset_price(asset: AssetId, base_asset: Option<AssetId>) -> Option<FixedU128>;
+		fn get_estimate_collateral_amount(borrow_asset: AssetId, borrow_amount: Balance, collateral_asset: AssetId) -> Option<Balance>;
 	}
 }
 
@@ -665,6 +666,13 @@ impl_runtime_apis! {
 			let base_asset = base_asset.unwrap_or(1); // If base_asset is None, default to USDT = 1
 			match lending::Pallet::<Runtime>::get_asset_price(asset, base_asset){
 				Ok(price) => Some(price),
+				Err(_) => None
+			}
+		}
+
+		fn get_estimate_collateral_amount(borrow_asset: AssetId, borrow_amount: Balance, collateral_asset: AssetId) -> Option<Balance> {
+			match lending::Pallet::<Runtime>::estimate_collateral_amount(borrow_asset, borrow_amount, collateral_asset){
+				Ok(estimate) => Some(estimate),
 				Err(_) => None
 			}
 		}

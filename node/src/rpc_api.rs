@@ -2,8 +2,7 @@ use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
 	lending::{
 		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
-	},
-	AccountId, AssetId, UserLTVInfo,
+	}, AccountId, AssetId, Balance, UserLTVInfo
 };
 use sp_runtime::FixedU128;
 
@@ -99,4 +98,32 @@ pub trait LendingPoolApi {
 		asset: AssetId,
 		base_asset: Option<AssetId>,
 	) -> RpcResult<Option<FixedU128>>;
+
+	/// Estimates the amount of collateral required for a specified borrow amount and asset.
+	///
+	/// This method calculates the required collateral that needs to be supplied for borrowing
+	/// a specific amount of an asset.
+	///
+	/// # Parameters
+	///
+	/// * `borrow_asset` - The `AssetId` of the asset the user wants to borrow.
+	/// * `borrow_amount` - The amount of the asset to be borrowed.
+	/// * `collateral_asset` - The `AssetId` of the asset to be used as collateral.
+	///
+	/// # Returns
+	///
+	/// * `RpcResult<Option<Balance>>` - The estimated amount of collateral required as `Balance`, 
+	///   if the estimation is available.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the estimation process fails or cannot retrieve the necessary data 
+	/// from the runtime.
+	#[method(name = "getEstimateCollateralAmount")]
+	fn get_estimate_collateral_amount(
+		&self,
+		borrow_asset: AssetId,
+		borrow_amount: Balance,
+		collateral_asset: AssetId,
+	) -> RpcResult<Option<Balance>>;
 }

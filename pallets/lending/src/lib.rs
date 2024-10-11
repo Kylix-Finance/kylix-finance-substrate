@@ -2081,5 +2081,55 @@ pub mod pallet {
 			// Return the list of borrowed assets, collateral assets, total borrow, and total collateral
 			(borrowed_assets, collateral_assets, total_borrow, total_collateral)
 		}
+
+		/// Estimates the amount of collateral required to borrow a specified amount of an asset.
+		///
+		/// This function calculates the minimum collateral required for a borrow, based on the 
+		/// borrowing asset, the amount to be borrowed, and the collateral asset provided. The 
+		/// calculation uses the pool's collateral factor to determine the minimum collateral 
+		/// necessary for the borrow transaction.
+		///
+		/// # Arguments
+		///
+		/// * `borrow_asset` - The asset ID of the asset the user wants to borrow.
+		/// * `borrow_amount` - The amount of the asset the user wants to borrow.
+		/// * `collateral_asset` - The asset ID of the asset to be provided as collateral.
+		///
+		/// # Returns
+		///
+		/// * `Result<AssetBalanceOf<T>, Error<T>>` - The estimated amount of collateral required 
+		///   to secure the borrow transaction.
+		///
+		/// # Errors
+		///
+		/// Returns an error if the lending pool does not exist, if there is a division by zero when 
+		/// calculating the collateral, or if the equivalent asset amount cannot be retrieved.
+		pub fn estimate_collateral_amount(
+			borrow_asset: AssetIdOf<T>,
+			borrow_amount: AssetBalanceOf<T>,
+			collateral_asset: AssetIdOf<T>,
+		) -> Result<AssetBalanceOf<T>, Error<T>> {
+			// let's check if our pool does exist
+			let asset_pool = AssetPool::<T>::from(borrow_asset);
+			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
+				.ok_or(Error::<T>::LendingPoolDoesNotExist)?;
+
+			// Update pool's indexes
+			pool.update_indexes()?;
+
+			let factor: Rate = pool.collateral_factor.into();
+			
+			// collateral_amount = borrow_amount/collateral_factor
+			let min_collateral_amount = FixedU128::from_inner(borrow_amount.saturated_into())
+				.checked_div(&factor)
+				.ok_or(Error::<T>::DivisionByZero)?
+				.into_inner()
+				.saturated_into();
+
+			let equivalent_collateral_amount =
+				Self::get_equivalent_asset_amount(collateral_asset, borrow_asset, min_collateral_amount)?;
+
+			Ok(equivalent_collateral_amount)
+		}
 	}
 }

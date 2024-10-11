@@ -2,6 +2,7 @@ use crate::{tests::mock::*, AssetPool};
 use frame_support::assert_ok;
 use num_traits::Zero;
 use sp_runtime::{FixedPointNumber, FixedU128};
+use substrate_fixed::types::extra::U128;
 
 #[test]
 fn test_compute_user_ltv_on_max_borrow() {
@@ -756,4 +757,53 @@ fn test_get_lending_pools_with_account_and_asset() {
 			assert_eq!(totals.total_supply, initial_balance - dot_borrow_amount_1);
 			assert_eq!(totals.total_borrow, dot_borrow_amount_1);
 	});
+}
+
+#[test]
+fn test_get_estimate_collateral_amount() {
+	ExtBuilder::default()
+		.with_endowed_balances(vec![
+			(DOT, ALICE, 1_000_000),
+			(KSM, ALICE, 1_000_000),
+			(DOT, BOB, 1_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			// Setup and activate the DOT lending pool
+			setup_active_pool(DOT, 1000);
+
+			// Set DOT price in terms of USDT: 1 DOT = 10 USDT
+			assert_ok!(TemplateModule::set_asset_price(
+				RuntimeOrigin::signed(ALICE),
+				DOT,
+				USDT,
+				FixedU128::from_rational(10, 1), 
+			));
+
+			// Set KSM price in terms of USDT: 1 KSM = 5 USDT
+			assert_ok!(TemplateModule::set_asset_price(
+				RuntimeOrigin::signed(ALICE),
+				KSM,
+				USDT,
+				FixedU128::from_rational(5, 1), 
+			));
+			let estimate_collateral_amount = TemplateModule::estimate_collateral_amount(DOT, 100, KSM);
+			
+			assert_ok!(&estimate_collateral_amount);
+
+			//Default collateral factor at 50%
+			//collateral_amount = borrow_amount/collateral_factor = 100/0.5 = 200 DOT = 400 KSM
+			let expected_amount = 400;
+			assert_eq!(estimate_collateral_amount.unwrap(), expected_amount);
+		});
+}
+
+#[test]
+fn test_get_estimate_collateral_amount_with_error() {
+	ExtBuilder::default()
+		.build()
+		.execute_with(|| {
+			let err_amount = TemplateModule::estimate_collateral_amount(DOT, 100, KSM);;
+			assert!(matches!(err_amount, Err(_)));
+		});
 }

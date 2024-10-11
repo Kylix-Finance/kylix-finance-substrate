@@ -3,8 +3,7 @@ use jsonrpsee::core::RpcResult;
 use kylix_runtime::{
 	lending::{
 		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
-	},
-	AccountId, AssetId, LendingPoolApi, UserLTVInfo,
+	}, AccountId, AssetId, Balance, LendingPoolApi, UserLTVInfo
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -134,6 +133,26 @@ where
 
 		let result = api
 			.get_asset_price(best_block_hash, asset, base_asset)
+			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
+		Ok(result)
+	}
+
+	/// Estimates the amount of collateral required for a specified borrow amount and asset.
+	///
+	/// # Returns
+	///
+	/// A `RpcResult<Option<Balance>>` containing the estimated amount of collateral required.
+	fn get_estimate_collateral_amount(
+		&self,
+		borrow_asset:AssetId,
+		borrow_amount:Balance,
+		collateral_asset:AssetId,
+	) -> RpcResult<Option<Balance> > {
+		let api = self.client.runtime_api();
+		let best_block_hash = self.client.info().best_hash;
+
+		let result = api
+			.get_estimate_collateral_amount(best_block_hash, borrow_asset, borrow_amount, collateral_asset)
 			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
 		Ok(result)
 	}
