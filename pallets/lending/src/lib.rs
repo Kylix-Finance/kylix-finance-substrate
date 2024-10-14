@@ -942,7 +942,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `Borrowed(who, borrowed_asset_id, borrowed_balance, collateral_asset_id, collateral_balance)`.
+		/// * `Borrowed(who, borrowed_asset_id, borrowed_balance, collateral_asset_id,
+		///   collateral_balance)`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::default())]
 		pub fn borrow(
@@ -983,7 +984,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `Repaid(who, repaid_asset_id, repaid_balance, collateral_asset_id, collateral_balance )`.
+		/// * `Repaid(who, repaid_asset_id, repaid_balance, collateral_asset_id, collateral_balance
+		///   )`.
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::default())]
 		pub fn repay(
@@ -1397,7 +1399,7 @@ pub mod pallet {
 				borrowed_balance: scaled_balance,
 				collateral_asset,
 				collateral_balance,
-				borrow_index_at_borrow_time: pool.borrow_index,
+				principal_balance: balance,
 			};
 
 			Borrows::<T>::try_mutate(
@@ -1473,32 +1475,7 @@ pub mod pallet {
 				(repayable_balance, true)
 			};
 
-			// Calculate the ratio of the repayment to the total repayable amount using u128
-			let repay_ratio_numerator = pay.saturated_into::<u128>();
-			let repay_ratio_denominator = repayable_balance.saturated_into::<u128>();
-
-			// Ensure the denominator is not zero
-			ensure!(repay_ratio_denominator > 0, Error::<T>::OverflowError);
-
-			// Calculate the repay ratio as a FixedU128
-			let repay_ratio =
-				FixedU128::checked_from_rational(repay_ratio_numerator, repay_ratio_denominator)
-					.ok_or(Error::<T>::OverflowError)?;
-
-			// Update the loan's borrowed balance
-			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
-			let borrowed_balance_reduction_u128 = repay_ratio
-				.checked_mul(&FixedU128::from(borrowed_balance_u128))
-				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				/ FixedU128::accuracy();
-
-			// Update the pool balances
-			let borrowed_balance_reduction =
-				borrowed_balance_reduction_u128.saturated_into::<AssetBalanceOf<T>>();
-			pool.move_asset_on_repay(pay, borrowed_balance_reduction)?;
-
-			// Transfer the repayment amount to the market
+			// transfer repay amount to the market
 			T::Fungibles::transfer(
 				asset.clone(),
 				who,
@@ -1507,43 +1484,45 @@ pub mod pallet {
 				Preservation::Preserve,
 			)?;
 
-			let new_borrowed_balance_u128 =
-				borrowed_balance_u128.saturating_sub(borrowed_balance_reduction_u128);
-
-			loan.borrowed_balance = new_borrowed_balance_u128.saturated_into::<AssetBalanceOf<T>>();
-
-			let release_collateral_amount =
-				Self::get_release_collateral_amount(repay_ratio, loan.collateral_balance)?;
-
-			loan.collateral_balance = loan
-				.collateral_balance
-				.checked_sub(&release_collateral_amount)
-				.ok_or(Error::<T>::OverflowError)?;
-
-			// Update the loan or remove it if fully repaid
-			if is_full_payment {
+			let (release_collateral_amount, borrowed_balance_reduction) = if is_full_payment {
+				// clear the borrow
 				Borrows::<T>::remove((who, asset, collateral_asset));
-				// Release all the collateral
-				T::Fungibles::transfer(
-					collateral_asset.clone(),
-					&Self::account_id(),
-					who,
-					loan.collateral_balance,
-					Preservation::Preserve,
-				)?;
+				// release all the collateral
+				(loan.collateral_balance, loan.principal_balance)
 			} else {
-				// Update the loan
-				Borrows::<T>::insert((who, asset, collateral_asset), loan);
-				// Release partial collateral
-				T::Fungibles::transfer(
-					collateral_asset.clone(),
-					&Self::account_id(),
-					who,
-					release_collateral_amount,
-					Preservation::Expendable,
-				)?;
-			}
+				// repay_ratio = (pay / repayable_balance
+				let repay_ratio = Self::get_ratio(pay, repayable_balance)?;
 
+				// get the amount of collateral to release
+				// repay_ratio * collateral_balance
+				let release_collateral_amount: AssetBalanceOf<T> =
+					Self::get_release_amount(repay_ratio, loan.collateral_balance)?;
+				// calculate principal reduction amount
+				// repay_ratio * principal_balance
+				let borrowed_balance_reduction: AssetBalanceOf<T> =
+					Self::get_release_amount(repay_ratio, loan.principal_balance)?;
+				let scaled_pay = pool.scaled_borrow_balance(pay)?;
+				// repay partially
+				loan.repay_partial(
+					scaled_pay,
+					release_collateral_amount,
+					borrowed_balance_reduction,
+				)?;
+				Borrows::<T>::set((who, asset, collateral_asset), Some(loan));
+				(release_collateral_amount, borrowed_balance_reduction)
+			};
+
+			// release collateral
+			T::Fungibles::transfer(
+				collateral_asset.clone(),
+				&Self::account_id(),
+				who,
+				release_collateral_amount,
+				Preservation::Preserve,
+			)?;
+
+			// Update pool: transfer asset from reserved_balance to borrowed_balance
+			pool.move_asset_on_repay(pay, borrowed_balance_reduction)?;
 			// Update the storage with the new pool state
 			LendingPoolStorage::<T>::insert(&asset_pool, pool);
 
@@ -1748,26 +1727,43 @@ pub mod pallet {
 			Ok(amount)
 		}
 
-		/// Returns the amount of collateral asset to be released on partial repayment
-		/// Returns release_amount = pay / repayable_balance * collateral_balance
-		fn get_release_collateral_amount(
+		/// Returns the amount of asset to be released/reduced on partial repayment
+		/// Returns release_amount = pay / repayable_balance * balance
+		fn get_release_amount(
 			repay_ratio: FixedU128,
-			collateral_balance: AssetBalanceOf<T>,
+			balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let collateral_balance_u128 = collateral_balance.saturated_into::<u128>();
+			let balance_u128 = balance.saturated_into::<u128>();
 
-			let release_collateral_amount_u128 = repay_ratio
-				.checked_mul(&FixedU128::from(collateral_balance_u128))
+			let release_amount_u128 = repay_ratio
+				.checked_mul(&FixedU128::from(balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
 				.into_inner()
 				/ FixedU128::accuracy();
 
-			let release_collateral_amount =
-				release_collateral_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+			let release_amount = release_amount_u128.saturated_into::<AssetBalanceOf<T>>();
 
-			Ok(release_collateral_amount)
+			Ok(release_amount)
 		}
 
+		/// Calculate the ratio of asset balances
+		pub fn get_ratio(
+			nominator_amount: AssetBalanceOf<T>,
+			denominator_amount: AssetBalanceOf<T>,
+		) -> Result<FixedU128, Error<T>> {
+			// Calculate the ratio using u128
+			let repay_ratio_nominator = nominator_amount.saturated_into::<u128>();
+			let repay_ratio_denominator = denominator_amount.saturated_into::<u128>();
+
+			// Ensure the denominator is not zero
+			ensure!(repay_ratio_denominator > 0, Error::<T>::OverflowError);
+
+			// Calculate the ratio as a FixedU128
+			let repay_ratio =
+				FixedU128::checked_from_rational(repay_ratio_nominator, repay_ratio_denominator)
+					.ok_or(Error::<T>::OverflowError)?;
+			Ok(repay_ratio)
+		}
 		/// Returns the amount of asset for an account
 		pub fn get_asset_balance(
 			account: &T::AccountId,

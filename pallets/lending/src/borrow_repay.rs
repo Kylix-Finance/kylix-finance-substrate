@@ -19,7 +19,7 @@ pub struct UserBorrow<T: Config> {
 	pub borrowed_balance: AssetBalanceOf<T>,
 	pub collateral_asset: AssetIdOf<T>,
 	pub collateral_balance: AssetBalanceOf<T>,
-	pub borrow_index_at_borrow_time: Rate,
+	pub principal_balance: AssetBalanceOf<T>,
 }
 
 impl<T: Config> UserBorrow<T> {
@@ -37,11 +37,12 @@ impl<T: Config> UserBorrow<T> {
 		Ok(())
 	}
 
-	// decrease the borrowed and collateral balances upon partila repayment
+	// decrease the borrowed, collateral and principal loan balances upon partila repayment
 	pub fn repay_partial(
 		&mut self,
 		borrowed_balance: AssetBalanceOf<T>,
 		collateral_balance: AssetBalanceOf<T>,
+		principal_balance: AssetBalanceOf<T>,
 	) -> Result<(), Error<T>> {
 		self.borrowed_balance = self
 			.borrowed_balance
@@ -51,6 +52,11 @@ impl<T: Config> UserBorrow<T> {
 			.collateral_balance
 			.checked_sub(&collateral_balance)
 			.ok_or(Error::<T>::OverflowError)?;
+		self.principal_balance = self
+			.principal_balance
+			.checked_sub(&principal_balance)
+			.ok_or(Error::<T>::OverflowError)?;
+
 		Ok(())
 	}
 }
