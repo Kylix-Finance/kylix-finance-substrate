@@ -174,26 +174,23 @@ impl ExtBuilder {
 		let mut unique_assets = HashSet::new();
 		let mut assets = vec![];
 		//Genesis metadata: id, name, symbol, decimals
-		let mut metadata = vec![]; 
+		let mut metadata = vec![];
 		for (asset_id, _, _) in self.endowed_balances.clone().into_iter() {
 			if unique_assets.insert(asset_id) {
 				// Only push the asset if it wasn't already in the set
 				assets.push((asset_id, ADMIN, true, 1));
-				metadata.push((asset_id, 
-					format!("{}Name", asset_id).into_bytes(), 
-					format!("{}Symbol", asset_id).into_bytes(), 
-					18)
-				);
+				metadata.push((
+					asset_id,
+					format!("{}Name", asset_id).into_bytes(),
+					format!("{}Symbol", asset_id).into_bytes(),
+					18,
+				));
 			}
 		}
 
-		pallet_assets::GenesisConfig::<Test> {
-			assets,
-			metadata,
-			accounts: self.endowed_balances,
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+		pallet_assets::GenesisConfig::<Test> { assets, metadata, accounts: self.endowed_balances }
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
@@ -217,11 +214,12 @@ pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
 }
 
 pub fn run_to_block(n: u64) {
-	while System::block_number() < n {
-		TemplateModule::on_finalize(System::block_number());
-		System::set_block_number(System::block_number() + 1);
-		Timestamp::set_timestamp(Timestamp::get() + BLOCK_TIME_MS);
-
-		TemplateModule::on_initialize(System::block_number());
-	}
+    let current_block = System::block_number();
+    if n > current_block {
+        TemplateModule::on_finalize(current_block);
+        System::set_block_number(n);
+        let time_difference = (n - current_block) * BLOCK_TIME_MS;
+        Timestamp::set_timestamp(Timestamp::get() + time_difference);
+        TemplateModule::on_initialize(System::block_number());
+    }
 }

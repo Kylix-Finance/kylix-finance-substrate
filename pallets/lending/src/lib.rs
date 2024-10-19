@@ -28,14 +28,6 @@ use frame_support::traits::tokens::fungibles::metadata::Inspect as MetadataInspe
 ///! 8. update_pool_rate_model()
 ///! 9. update_pool_kink()
 ///!
-///
-/// TODO:
-/// 1. rename the pallet to `lending` and the module to `lending`
-/// 2. implement the `ManagerOrigin` type for reserve pool special operations
-/// 3. implement tests for the lending logic
-/// 4. implement the `WeightInfo` trait for the pallet
-///
-///! Use case
 pub use frame_support::{
 	pallet_prelude::*,
 	serde, sp_runtime,
@@ -113,7 +105,7 @@ pub struct LendingPoolInfo {
 	pub supply_apy: FixedU128,
 	pub supply_apy_s: FixedU128,
 	pub is_activated: bool,
-	pub user_asset_balance: Option<u128>
+	pub user_asset_balance: Option<u128>,
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Serialize, Deserialize, Debug, TypeInfo)]
@@ -536,19 +528,14 @@ pub mod pallet {
 			&self,
 			loan: &UserBorrow<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let index_ratio = self
-				.borrow_index
-				.checked_div(&loan.borrow_index_at_borrow_time)
-				.ok_or(Error::<T>::OverflowError)?;
+			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into();
 
-			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
-
-			let repayable_amount_u128 = index_ratio
-				.checked_mul(&FixedU128::from(borrowed_balance_u128))
+			let repayable_amount_u128 = FixedU128::from_inner(borrowed_balance_u128)
+				.checked_mul(&self.borrow_index)
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
+				.into_inner();
 
-			let repayable_amount = repayable_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+			let repayable_amount = repayable_amount_u128.saturated_into();
 
 			Ok(repayable_amount)
 		}
@@ -681,19 +668,68 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		DepositSupplied { who: T::AccountId, asset: AssetIdOf<T>, balance: BalanceOf<T> },
-		DepositWithdrawn { who: T::AccountId, balance: BalanceOf<T> },
-		DepositBorrowed { who: T::AccountId, balance: BalanceOf<T> },
-		DepositRepaid { who: T::AccountId, balance: BalanceOf<T> },
-		RewardsClaimed { who: T::AccountId, balance: BalanceOf<T> },
-		LendingPoolAdded { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolRemoved { who: T::AccountId },
-		LendingPoolActivated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolDeactivated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolRateModelUpdated { who: T::AccountId, asset: AssetIdOf<T> },
-		LendingPoolKinkUpdated { who: T::AccountId, asset: AssetIdOf<T> },
-		LPTokenMinted { who: T::AccountId, asset: AssetIdOf<T>, balance: AssetBalanceOf<T> },
-		AssetPriceAdded { asset_1: AssetIdOf<T>, asset_2: AssetIdOf<T>, price: FixedU128 },
+		LiquiditySupplied {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: BalanceOf<T>,
+		},
+		LiquidityWithdrawn {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: BalanceOf<T>,
+		},
+		Borrowed {
+			who: T::AccountId,
+			borrowed_asset_id: AssetIdOf<T>,
+			borrowed_balance: BalanceOf<T>,
+			collateral_asset_id: AssetIdOf<T>,
+			collateral_balance: BalanceOf<T>,
+		},
+		Repaid {
+			who: T::AccountId,
+			repaid_asset_id: AssetIdOf<T>,
+			repaid_balance: BalanceOf<T>,
+			collateral_asset_id: AssetIdOf<T>,
+			collateral_balance: BalanceOf<T>,
+		},
+		RewardsClaimed {
+			who: T::AccountId,
+			balance: BalanceOf<T>,
+		},
+		LendingPoolAdded {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolRemoved {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolActivated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolDeactivated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolRateModelUpdated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LendingPoolKinkUpdated {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+		},
+		LPTokenMinted {
+			who: T::AccountId,
+			asset: AssetIdOf<T>,
+			balance: AssetBalanceOf<T>,
+		},
+		AssetPriceAdded {
+			asset: AssetIdOf<T>,
+			base_asset: AssetIdOf<T>,
+			price: FixedU128,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -765,8 +801,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers two events:
 		///
-		/// * `LendingPoolAdded(who, asset_a)` if a new lending pool was created.
-		/// * `DepositSupplied(who, asset_a, amount_a)` after the liquidity has been successfully
+		/// * `LendingPoolAdded(who, asset)` if a new lending pool was created.
+		/// * `LiquiditySupplied(who, asset, balance)` after the liquidity has been successfully
 		///   added.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::default())]
@@ -779,7 +815,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			Self::do_create_lending_pool(&who, id, asset, balance)?;
 			Self::deposit_event(Event::LendingPoolAdded { who: who.clone(), asset });
-			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
+			Self::deposit_event(Event::LiquiditySupplied { who, asset, balance });
 			Ok(())
 		}
 
@@ -807,7 +843,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolActivated(who, asset_a)` if the lending pool was activated.
+		/// * `LendingPoolActivated(who, asset)` if the lending pool was activated.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::default())]
 		pub fn activate_lending_pool(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
@@ -842,7 +878,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositSupplied(who, asset, balance)` if the lending pool has been supplied.
+		/// * `LiquiditySupplied(who, asset, balance)` if the lending pool has been supplied.
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::default())]
 		pub fn supply(
@@ -852,7 +888,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_supply(&who, asset, balance)?;
-			Self::deposit_event(Event::DepositSupplied { who, asset, balance });
+			Self::deposit_event(Event::LiquiditySupplied { who, asset, balance });
 			Ok(())
 		}
 
@@ -882,7 +918,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositWithdrawn(who, balance)` if the lending pool was activated.
+		/// * `LiquidityWithdrawn(who, asset, balance)` if the lending pool was activated.
 		#[pallet::call_index(3)]
 		#[pallet::weight(Weight::default())]
 		pub fn withdraw(
@@ -892,7 +928,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdrawal(&who, asset, balance)?;
-			Self::deposit_event(Event::DepositWithdrawn { who, balance });
+			Self::deposit_event(Event::LiquidityWithdrawn { who, asset, balance });
 			Ok(())
 		}
 
@@ -922,7 +958,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositBorrowed(who, balance)` if the lending pool was activated.
+		/// * `Borrowed(who, borrowed_asset_id, borrowed_balance, collateral_asset_id,
+		///   collateral_balance)`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::default())]
 		pub fn borrow(
@@ -934,7 +971,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_borrow(&who, asset, balance, collateral_asset, collateral_balance)?;
-			Self::deposit_event(Event::DepositBorrowed { who, balance });
 			Ok(())
 		}
 
@@ -964,7 +1000,8 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `DepositRepaid(who, balance)` if the lending pool was activated.
+		/// * `Repaid(who, repaid_asset_id, repaid_balance, collateral_asset_id, collateral_balance
+		///   )`.
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::default())]
 		pub fn repay(
@@ -975,7 +1012,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_repay(&who, asset, balance, collateral_asset)?;
-			Self::deposit_event(Event::DepositRepaid { who, balance });
 			Ok(())
 		}
 
@@ -1031,7 +1067,7 @@ pub mod pallet {
 		///
 		/// If the function succeeds, it triggers an event:
 		///
-		/// * `LendingPoolDeactivated(who, asset_a)` if the lending pool was deactivated.
+		/// * `LendingPoolDeactivated(who, asset)` if the lending pool was deactivated.
 		#[pallet::call_index(7)]
 		#[pallet::weight(Weight::default())]
 		pub fn deactivate_lending_pool(
@@ -1103,19 +1139,19 @@ pub mod pallet {
 		/// Sets the price of one asset in terms of another asset.
 		///
 		/// The `set_asset_price` extrinsic allows a user to specify the relative price of one asset
-		/// (`asset_1`) in terms of another asset (`asset_2`).
+		/// (`asset`) in terms of another asset (`base_asset`).
 		///
 		/// # Parameters
 		/// - `origin`: The transaction origin. This must be a signed extrinsic.
-		/// - `asset_1`: The identifier for the first asset. This is the asset whose price is being
+		/// - `asset`: The identifier for the first asset. This is the asset whose price is being
 		///   set.
-		/// - `asset_2`: The identifier for the second asset. This is the asset relative to which
+		/// - `base_asset`: The identifier for the second asset. This is the asset relative to which
 		///   the price is measured.
-		/// - `price`: The price of `asset_1` in terms of `asset_2`. This must be a non-zero value
+		/// - `price`: The price of `asset` in terms of `base_asset`. This must be a non-zero value
 		///   to avoid errors.
 		///
 		/// # Events
-		/// - `AssetPriceAdded { asset_1, asset_2, price }`: This event is emitted after the price
+		/// - `AssetPriceAdded { asset, base_asset, price }`: This event is emitted after the price
 		///   is successfully set. It contains the asset identifiers and the new price.
 		///
 		/// # Errors
@@ -1126,18 +1162,18 @@ pub mod pallet {
 		#[pallet::weight(Weight::default())]
 		pub fn set_asset_price(
 			origin: OriginFor<T>,
-			asset_1: AssetIdOf<T>,
-			asset_2: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
+			base_asset: AssetIdOf<T>,
 			price: FixedU128,
 		) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 			// price should not be zero
 			ensure!(price > FixedU128::zero(), Error::<T>::InvalidAssetPrice);
 
-			AssetPrices::<T>::set((asset_1, asset_2), Some(price));
+			AssetPrices::<T>::set((asset, base_asset), Some(price));
 
 			// Emit an event.
-			Self::deposit_event(Event::AssetPriceAdded { asset_1, asset_2, price });
+			Self::deposit_event(Event::AssetPriceAdded { asset, base_asset, price });
 
 			Ok(())
 		}
@@ -1379,7 +1415,7 @@ pub mod pallet {
 				borrowed_balance: scaled_balance,
 				collateral_asset,
 				collateral_balance,
-				borrow_index_at_borrow_time: pool.borrow_index,
+				principal_balance: balance,
 			};
 
 			Borrows::<T>::try_mutate(
@@ -1419,7 +1455,13 @@ pub mod pallet {
 				collateral_balance,
 				Preservation::Preserve,
 			)?;
-
+			Self::deposit_event(Event::Borrowed {
+				who: who.clone(),
+				borrowed_asset_id: asset,
+				borrowed_balance: balance,
+				collateral_asset_id: collateral_asset,
+				collateral_balance,
+			});
 			Ok(())
 		}
 
@@ -1443,85 +1485,71 @@ pub mod pallet {
 			let repayable_balance = pool.repayable_amount(&loan)?;
 
 			// Determine the payment amount and whether it's a full payment
-			let (pay, is_full_payment) = if balance <= repayable_balance {
+			let (pay, is_full_payment) = if balance < repayable_balance {
 				(balance, false)
 			} else {
 				(repayable_balance, true)
 			};
 
-			// Calculate the ratio of the repayment to the total repayable amount using u128
-			let repay_ratio_numerator = pay.saturated_into::<u128>();
-			let repay_ratio_denominator = repayable_balance.saturated_into::<u128>();
-
-			// Ensure the denominator is not zero
-			ensure!(repay_ratio_denominator > 0, Error::<T>::OverflowError);
-
-			// Calculate the repay ratio as a FixedU128
-			let repay_ratio =
-				FixedU128::checked_from_rational(repay_ratio_numerator, repay_ratio_denominator)
-					.ok_or(Error::<T>::OverflowError)?;
-
-			// Update the loan's borrowed balance
-			let borrowed_balance_u128 = loan.borrowed_balance.saturated_into::<u128>();
-			let borrowed_balance_reduction_u128 = repay_ratio
-				.checked_mul(&FixedU128::from(borrowed_balance_u128))
-				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
-
-			// Update the pool balances
-			let borrowed_balance_reduction =
-				borrowed_balance_reduction_u128.saturated_into::<AssetBalanceOf<T>>();
-			pool.move_asset_on_repay(pay, borrowed_balance_reduction)?;
-
-			// Transfer the repayment amount to the market
+			// transfer repay amount to the market
 			T::Fungibles::transfer(
 				asset.clone(),
 				who,
 				&Self::account_id(),
 				pay,
-				Preservation::Preserve,
+				Preservation::Expendable,
 			)?;
 
-			let new_borrowed_balance_u128 =
-				borrowed_balance_u128.saturating_sub(borrowed_balance_reduction_u128);
-
-			loan.borrowed_balance = new_borrowed_balance_u128.saturated_into::<AssetBalanceOf<T>>();
-
-			let release_collateral_amount =
-				Self::get_release_collateral_amount(repay_ratio, loan.collateral_balance)?;
-
-			loan.collateral_balance = loan
-				.collateral_balance
-				.checked_sub(&release_collateral_amount)
-				.ok_or(Error::<T>::OverflowError)?;
-
-			// Update the loan or remove it if fully repaid
-			if is_full_payment {
+			let (release_collateral_amount, borrowed_balance_reduction) = if is_full_payment {
+				// clear the borrow
 				Borrows::<T>::remove((who, asset, collateral_asset));
-				// Release all the collateral
-				T::Fungibles::transfer(
-					collateral_asset.clone(),
-					&Self::account_id(),
-					who,
-					loan.collateral_balance,
-					Preservation::Preserve,
-				)?;
+				// release all the collateral
+				(loan.collateral_balance, loan.principal_balance)
 			} else {
-				// Update the loan
-				Borrows::<T>::insert((who, asset, collateral_asset), loan);
-				// Release partial collateral
-				T::Fungibles::transfer(
-					collateral_asset.clone(),
-					&Self::account_id(),
-					who,
-					release_collateral_amount,
-					Preservation::Expendable,
-				)?;
-			}
+				// repay_ratio = (pay / repayable_balance
+				let repay_ratio = Self::get_ratio(pay, repayable_balance)?;
 
+				// get the amount of collateral to release
+				// repay_ratio * collateral_balance
+				let release_collateral_amount: AssetBalanceOf<T> =
+					Self::get_release_amount(repay_ratio, loan.collateral_balance)?;
+				// calculate principal reduction amount
+				// repay_ratio * principal_balance
+				let borrowed_balance_reduction: AssetBalanceOf<T> =
+					Self::get_release_amount(repay_ratio, loan.principal_balance)?;
+				let scaled_pay = pool.scaled_borrow_balance(pay)?;
+				// repay partially
+				loan.repay_partial(
+					scaled_pay,
+					release_collateral_amount,
+					borrowed_balance_reduction,
+				)?;
+				Borrows::<T>::set((who, asset, collateral_asset), Some(loan));
+				(release_collateral_amount, borrowed_balance_reduction)
+			};
+
+			// release collateral
+			T::Fungibles::transfer(
+				collateral_asset.clone(),
+				&Self::account_id(),
+				who,
+				release_collateral_amount,
+				Preservation::Expendable,
+			)?;
+
+			// Update pool: transfer asset from reserved_balance to borrowed_balance
+			pool.move_asset_on_repay(pay, borrowed_balance_reduction)?;
 			// Update the storage with the new pool state
 			LendingPoolStorage::<T>::insert(&asset_pool, pool);
 
+			// Emit event with the  actual repay amount
+			Self::deposit_event(Event::Repaid {
+				who: who.clone(),
+				repaid_asset_id: asset,
+				repaid_balance: pay,
+				collateral_asset_id: collateral_asset,
+				collateral_balance: release_collateral_amount,
+			});
 			Ok(())
 		}
 
@@ -1715,25 +1743,43 @@ pub mod pallet {
 			Ok(amount)
 		}
 
-		/// Returns the amount of collateral asset to be released on partial repayment
-		/// Returns release_amount = pay / repayable_balance * collateral_balance
-		fn get_release_collateral_amount(
+		/// Returns the amount of asset to be released/reduced on partial repayment
+		/// Returns release_amount = pay / repayable_balance * balance
+		fn get_release_amount(
 			repay_ratio: FixedU128,
-			collateral_balance: AssetBalanceOf<T>,
+			balance: AssetBalanceOf<T>,
 		) -> Result<AssetBalanceOf<T>, Error<T>> {
-			let collateral_balance_u128 = collateral_balance.saturated_into::<u128>();
+			let balance_u128 = balance.saturated_into::<u128>();
 
-			let release_collateral_amount_u128 = repay_ratio
-				.checked_mul(&FixedU128::from(collateral_balance_u128))
+			let release_amount_u128 = repay_ratio
+				.checked_mul(&FixedU128::from(balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner() / FixedU128::accuracy();
+				.into_inner()
+				/ FixedU128::accuracy();
 
-			let release_collateral_amount =
-				release_collateral_amount_u128.saturated_into::<AssetBalanceOf<T>>();
+			let release_amount = release_amount_u128.saturated_into::<AssetBalanceOf<T>>();
 
-			Ok(release_collateral_amount)
+			Ok(release_amount)
 		}
 
+		/// Calculate the ratio of asset balances
+		pub fn get_ratio(
+			nominator_amount: AssetBalanceOf<T>,
+			denominator_amount: AssetBalanceOf<T>,
+		) -> Result<FixedU128, Error<T>> {
+			// Calculate the ratio using u128
+			let repay_ratio_nominator = nominator_amount.saturated_into::<u128>();
+			let repay_ratio_denominator = denominator_amount.saturated_into::<u128>();
+
+			// Ensure the denominator is not zero
+			ensure!(repay_ratio_denominator > 0, Error::<T>::OverflowError);
+
+			// Calculate the ratio as a FixedU128
+			let repay_ratio =
+				FixedU128::checked_from_rational(repay_ratio_nominator, repay_ratio_denominator)
+					.ok_or(Error::<T>::OverflowError)?;
+			Ok(repay_ratio)
+		}
 		/// Fetches the balance of a given asset for an account.
 		///
 		/// # Arguments
@@ -1764,7 +1810,8 @@ pub mod pallet {
 		///
 		/// # Returns
 		///
-		/// * `Result<FixedU128, Error<T>>` - The price of the asset or an error if not found or overflow occurs.
+		/// * `Result<FixedU128, Error<T>>` - The price of the asset or an error if not found or
+		///   overflow occurs.
 		pub fn get_asset_price(
 			asset: AssetIdOf<T>,
 			base_asset: AssetIdOf<T>,
@@ -1778,10 +1825,10 @@ pub mod pallet {
 					.ok_or(Error::<T>::DivisionByZero)?
 			} else {
 				// Calculate asset price through a common base asset (USDT)
-				let asset_usdt_price = AssetPrices::<T>::get((asset, 1))
-					.ok_or(Error::<T>::AssetPriceNotSet)?;
-				let base_asset_usdt_price = AssetPrices::<T>::get((base_asset, 1))
-					.ok_or(Error::<T>::AssetPriceNotSet)?;
+				let asset_usdt_price =
+					AssetPrices::<T>::get((asset, 1)).ok_or(Error::<T>::AssetPriceNotSet)?;
+				let base_asset_usdt_price =
+					AssetPrices::<T>::get((base_asset, 1)).ok_or(Error::<T>::AssetPriceNotSet)?;
 
 				asset_usdt_price
 					.checked_div(&base_asset_usdt_price)
@@ -1812,8 +1859,9 @@ pub mod pallet {
 
 		/// Retrieves lending pools and their aggregated totals.
 		///
-		/// This function collects all the lending pools matching the given `asset` filter and aggregates their total supply and borrow amounts.
-		/// 
+		/// This function collects all the lending pools matching the given `asset` filter and
+		/// aggregates their total supply and borrow amounts.
+		///
 		/// # Arguments
 		///
 		/// * `asset` - An optional filter for a specific `AssetId`. If `None`, includes all pools.
@@ -1824,7 +1872,10 @@ pub mod pallet {
 		/// A tuple of:
 		/// * `Vec<LendingPoolInfo>` - A vector containing details of each lending pool.
 		/// * `AggregatedTotals` - A struct containing the total supply and borrow amounts.
-		pub fn get_lending_pools(asset: Option<AssetIdOf<T>>, account: Option<&T::AccountId>) -> (Vec<LendingPoolInfo>, AggregatedTotals) {
+		pub fn get_lending_pools(
+			asset: Option<AssetIdOf<T>>,
+			account: Option<&T::AccountId>,
+		) -> (Vec<LendingPoolInfo>, AggregatedTotals) {
 			let mut total_supply: u128 = 0;
 			let mut total_borrow: u128 = 0;
 
@@ -1838,38 +1889,46 @@ pub mod pallet {
 				})
 				.map(|(_, pool)| {
 					// Retrieve metadata for the pool's asset
-					let (asset_name, asset_decimals, asset_symbol) = Self::get_metadata(pool.lend_token_id);
+					let (asset_name, asset_decimals, asset_symbol) =
+						Self::get_metadata(pool.lend_token_id);
 					let asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
-					
+
 					let user_asset_balance = match account {
-						Some(account) => Self::get_asset_balance(&account, pool.lend_token_id).ok().map(|balance| balance.saturated_into::<u128>()),
+						Some(account) => Self::get_asset_balance(&account, pool.lend_token_id)
+							.ok()
+							.map(|balance| balance.saturated_into::<u128>()),
 						None => None,
 					};
 
-					// Convert reserve balance and borrowed balance to equivalent asset amount in USDT
+					// Convert reserve balance and borrowed balance to equivalent asset amount in
+					// USDT
 					let equivalent_asset_supply_amount = Self::get_equivalent_asset_amount(
 						1, // USDT
 						pool.lend_token_id,
 						pool.reserve_balance,
-					).unwrap_or_default();
-					
+					)
+					.unwrap_or_default();
+
 					let equivalent_asset_borrow_amount = Self::get_equivalent_asset_amount(
 						1, // USDT
 						pool.lend_token_id,
 						pool.borrowed_balance,
-					).unwrap_or_default();
+					)
+					.unwrap_or_default();
 
 					// Accumulate totals
-					total_supply = total_supply.saturating_add(equivalent_asset_supply_amount.saturated_into::<u128>());
-					total_borrow = total_borrow.saturating_add(equivalent_asset_borrow_amount.saturated_into::<u128>());
+					total_supply = total_supply
+						.saturating_add(equivalent_asset_supply_amount.saturated_into::<u128>());
+					total_borrow = total_borrow
+						.saturating_add(equivalent_asset_borrow_amount.saturated_into::<u128>());
 
 					LendingPoolInfo {
 						id: pool.id,
 						asset_id: pool.lend_token_id,
 						asset: asset_name,
-						asset_decimals: asset_decimals,
-						asset_symbol: asset_symbol,
-						asset_icon: asset_icon,
+						asset_decimals,
+						asset_symbol,
+						asset_icon,
 						collateral_q: pool.collateral_factor.deconstruct().into(),
 						utilization: pool.utilisation_ratio().unwrap_or_default().into(),
 						borrow_apy: pool.borrow_interest_rate().unwrap_or_default().into(),
@@ -1882,17 +1941,15 @@ pub mod pallet {
 				})
 				.collect();
 
-			let aggregated_totals = AggregatedTotals {
-				total_supply,
-				total_borrow,
-			};
+			let aggregated_totals = AggregatedTotals { total_supply, total_borrow };
 
 			(pools, aggregated_totals)
 		}
 
 		/// Retrieves supplied assets for a given account and calculates total deposits.
 		///
-		/// This function iterates over all lending pools and collects the supplies for the given `account`.
+		/// This function iterates over all lending pools and collects the supplies for the given
+		/// `account`.
 		///
 		/// # Arguments
 		///
@@ -1930,7 +1987,8 @@ pub mod pallet {
 						.saturated_into::<u128>();
 
 					// Retrieve metadata for the pool's asset
-					let (asset_name, asset_decimals, asset_symbol) = Self::get_metadata(pool.lend_token_id);
+					let (asset_name, asset_decimals, asset_symbol) =
+						Self::get_metadata(pool.lend_token_id);
 					let asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
 					// Calculate the equivalent supplied amount
@@ -1938,13 +1996,15 @@ pub mod pallet {
 						1, // USDT
 						pool.lend_token_id,
 						supplied_amount,
-					).unwrap_or_default();
+					)
+					.unwrap_or_default();
 
 					// Calculate the current APY for this pool
 					let apy = pool.supply_interest_rate().unwrap_or_default();
 
 					// Accumulate total supply
-					total_supply = total_supply.saturating_add(equivalent_supplied_amount.saturated_into::<u128>());
+					total_supply = total_supply
+						.saturating_add(equivalent_supplied_amount.saturated_into::<u128>());
 
 					// Create and return a `SuppliedAsset`
 					Some(SuppliedAsset {
@@ -1967,7 +2027,8 @@ pub mod pallet {
 
 		/// Retrieves borrowed and collateral assets for a given account and calculates totals.
 		///
-		/// This function iterates over all active borrows for the account and collects the borrowed and collateral assets.
+		/// This function iterates over all active borrows for the account and collects the borrowed
+		/// and collateral assets.
 		///
 		/// # Arguments
 		///
@@ -1977,7 +2038,8 @@ pub mod pallet {
 		///
 		/// A tuple of:
 		/// * `Vec<BorrowedAsset>` - A list of assets borrowed by the account.
-		/// * `Vec<CollateralAsset>` - A list of collateral assets associated with the account's borrows.
+		/// * `Vec<CollateralAsset>` - A list of collateral assets associated with the account's
+		///   borrows.
 		/// * `TotalBorrow` - The total amount borrowed.
 		/// * `TotalCollateral` - The total collateral provided.
 		pub fn get_asset_wise_borrows_collaterals(
@@ -2021,7 +2083,8 @@ pub mod pallet {
 					.unwrap_or_default();
 
 				// Retrieve asset metadata for the borrowed asset
-				let (borrow_asset_name, borrow_asset_decimals, borrow_asset_symbol) = Self::get_metadata(borrowed_asset);
+				let (borrow_asset_name, borrow_asset_decimals, borrow_asset_symbol) =
+					Self::get_metadata(borrowed_asset);
 				let borrow_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
 				// Calculate equivalent borrowed amount in USDT
@@ -2029,10 +2092,12 @@ pub mod pallet {
 					1, // USDT
 					borrowed_asset,
 					borrowed_amount,
-				).unwrap_or_default();
+				)
+				.unwrap_or_default();
 
 				// Accumulate total borrowed amount
-				total_borrow = total_borrow.saturating_add(equivalent_borrowed_amount.saturated_into::<u128>());
+				total_borrow = total_borrow
+					.saturating_add(equivalent_borrowed_amount.saturated_into::<u128>());
 
 				// Create and store a `BorrowedAsset`
 				borrowed_assets.push(BorrowedAsset {
@@ -2052,7 +2117,8 @@ pub mod pallet {
 				let collateral_balance = loan.collateral_balance;
 
 				// Retrieve asset metadata for the collateral asset
-				let (collateral_asset_name, collateral_asset_decimals, collateral_asset_symbol) = Self::get_metadata(collateral_asset);
+				let (collateral_asset_name, collateral_asset_decimals, collateral_asset_symbol) =
+					Self::get_metadata(collateral_asset);
 				let collateral_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
 				// Calculate equivalent collateral amount in USDT
@@ -2060,10 +2126,12 @@ pub mod pallet {
 					1, // USDT
 					collateral_asset,
 					collateral_balance,
-				).unwrap_or_default();
+				)
+				.unwrap_or_default();
 
 				// Accumulate total collateral amount
-				total_collateral = total_collateral.saturating_add(equivalent_collateral_amount.saturated_into::<u128>());
+				total_collateral = total_collateral
+					.saturating_add(equivalent_collateral_amount.saturated_into::<u128>());
 
 				// Create and store a `CollateralAsset`
 				collateral_assets.push(CollateralAsset {
@@ -2078,15 +2146,16 @@ pub mod pallet {
 				});
 			}
 
-			// Return the list of borrowed assets, collateral assets, total borrow, and total collateral
+			// Return the list of borrowed assets, collateral assets, total borrow, and total
+			// collateral
 			(borrowed_assets, collateral_assets, total_borrow, total_collateral)
 		}
 
 		/// Estimates the amount of collateral required to borrow a specified amount of an asset.
 		///
-		/// This function calculates the minimum collateral required for a borrow, based on the 
-		/// borrowing asset, the amount to be borrowed, and the collateral asset provided. The 
-		/// calculation uses the pool's collateral factor to determine the minimum collateral 
+		/// This function calculates the minimum collateral required for a borrow, based on the
+		/// borrowing asset, the amount to be borrowed, and the collateral asset provided. The
+		/// calculation uses the pool's collateral factor to determine the minimum collateral
 		/// necessary for the borrow transaction.
 		///
 		/// # Arguments
@@ -2097,12 +2166,12 @@ pub mod pallet {
 		///
 		/// # Returns
 		///
-		/// * `Result<AssetBalanceOf<T>, Error<T>>` - The estimated amount of collateral required 
-		///   to secure the borrow transaction.
+		/// * `Result<AssetBalanceOf<T>, Error<T>>` - The estimated amount of collateral required to
+		///   secure the borrow transaction.
 		///
 		/// # Errors
 		///
-		/// Returns an error if the lending pool does not exist, if there is a division by zero when 
+		/// Returns an error if the lending pool does not exist, if there is a division by zero when
 		/// calculating the collateral, or if the equivalent asset amount cannot be retrieved.
 		pub fn estimate_collateral_amount(
 			borrow_asset: AssetIdOf<T>,
@@ -2118,7 +2187,7 @@ pub mod pallet {
 			pool.update_indexes()?;
 
 			let factor: Rate = pool.collateral_factor.into();
-			
+
 			// collateral_amount = borrow_amount/collateral_factor
 			let min_collateral_amount = FixedU128::from_inner(borrow_amount.saturated_into())
 				.checked_div(&factor)
@@ -2126,8 +2195,11 @@ pub mod pallet {
 				.into_inner()
 				.saturated_into();
 
-			let equivalent_collateral_amount =
-				Self::get_equivalent_asset_amount(collateral_asset, borrow_asset, min_collateral_amount)?;
+			let equivalent_collateral_amount = Self::get_equivalent_asset_amount(
+				collateral_asset,
+				borrow_asset,
+				min_collateral_amount,
+			)?;
 
 			Ok(equivalent_collateral_amount)
 		}
