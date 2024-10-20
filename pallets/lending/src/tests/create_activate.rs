@@ -11,7 +11,7 @@ fn test_create_lending_pool_succeeds_for_new_asset() {
 		.build()
 		.execute_with(|| {
 			let amount = 1_000;
-			assert_ok!(TemplateModule::create_lending_pool(
+			assert_ok!(Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				NEW_ASSET,
@@ -19,7 +19,7 @@ fn test_create_lending_pool_succeeds_for_new_asset() {
 			));
 
 			let asset_pool = AssetPool::<Test>::from(NEW_ASSET);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some());
+			assert!(Lending::reserve_pools(asset_pool).is_some());
 
 			let events = System::events();
 			assert!(events.iter().any(|record| record.event
@@ -44,7 +44,7 @@ fn test_create_lending_pool_fails_for_existing_asset() {
 		.build()
 		.execute_with(|| {
 			// First creation should succeed
-			assert_ok!(TemplateModule::create_lending_pool(
+			assert_ok!(Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				DOT,
@@ -53,7 +53,7 @@ fn test_create_lending_pool_fails_for_existing_asset() {
 
 			// Second creation should fail
 			assert_noop!(
-				TemplateModule::create_lending_pool(
+				Lending::create_lending_pool(
 					RuntimeOrigin::signed(ALICE),
 					LENDING_POOL_TOKEN + 1,
 					DOT,
@@ -72,7 +72,7 @@ fn test_create_lending_pool_fails_with_zero_amount() {
 		.execute_with(|| {
 			// Pool creation should fail
 			assert_noop!(
-				TemplateModule::create_lending_pool(
+				Lending::create_lending_pool(
 					RuntimeOrigin::signed(ALICE),
 					LENDING_POOL_TOKEN,
 					DOT,
@@ -88,7 +88,7 @@ fn test_create_lending_pool_fails_with_insufficient_balance() {
 	ExtBuilder::default().with_endowed_balances(vec![]).build().execute_with(|| {
 		// Pool creation should fail
 		assert_noop!(
-			TemplateModule::create_lending_pool(
+			Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				DOT,
@@ -106,7 +106,7 @@ fn test_create_lending_pool_fails_with_existing_id() {
 		.build()
 		.execute_with(|| {
 			// First creation should succeed
-			assert_ok!(TemplateModule::create_lending_pool(
+			assert_ok!(Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				DOT,
@@ -115,7 +115,7 @@ fn test_create_lending_pool_fails_with_existing_id() {
 
 			// Creation with the same LENDING_POOL_TOKEN should fail
 			assert_noop!(
-				TemplateModule::create_lending_pool(
+				Lending::create_lending_pool(
 					RuntimeOrigin::signed(ALICE),
 					LENDING_POOL_TOKEN,
 					KSM,
@@ -207,7 +207,7 @@ fn test_activate_fails_for_non_existent_lending_pool() {
 		.execute_with(|| {
 			// Supply
 			assert_noop!(
-				TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
+				Lending::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
 				Error::<Test>::LendingPoolDoesNotExist
 			);
 		});
@@ -219,16 +219,16 @@ fn test_activate_fails_for_already_activated_lending_pool() {
 		.with_endowed_balances(vec![(DOT, ALICE, 1_000_000)])
 		.build()
 		.execute_with(|| {
-			assert_ok!(TemplateModule::create_lending_pool(
+			assert_ok!(Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN,
 				DOT,
 				1_000
 			));
 
-			TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT).unwrap();
+			Lending::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT).unwrap();
 			assert_noop!(
-				TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
+				Lending::activate_lending_pool(RuntimeOrigin::signed(ALICE), DOT),
 				Error::<Test>::LendingPoolAlreadyActivated
 			);
 		});

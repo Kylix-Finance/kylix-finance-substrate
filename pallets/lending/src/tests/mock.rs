@@ -55,7 +55,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Assets: pallet_assets,
-		TemplateModule: pallet_template,
+		Lending: pallet_template,
 		Timestamp: pallet_timestamp,
 	}
 );
@@ -199,13 +199,13 @@ impl ExtBuilder {
 }
 
 pub fn setup_active_pool(asset: AssetIdOf<Test>, initial_balance: BalanceOf<Test>) {
-	assert_ok!(TemplateModule::create_lending_pool(
+	assert_ok!(Lending::create_lending_pool(
 		RuntimeOrigin::signed(ALICE),
 		LENDING_POOL_TOKEN,
 		asset,
 		initial_balance
 	));
-	assert_ok!(TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), asset));
+	assert_ok!(Lending::activate_lending_pool(RuntimeOrigin::signed(ALICE), asset));
 }
 
 pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
@@ -216,10 +216,10 @@ pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
 pub fn run_to_block(n: u64) {
     let current_block = System::block_number();
     if n > current_block {
-        TemplateModule::on_finalize(current_block);
+        Lending::on_finalize(current_block);
         System::set_block_number(n);
         let time_difference = (n - current_block) * BLOCK_TIME_MS;
         Timestamp::set_timestamp(Timestamp::get() + time_difference);
-        TemplateModule::on_initialize(System::block_number());
+        Lending::on_initialize(System::block_number());
     }
 }
