@@ -22,11 +22,11 @@ fn borrow_maximum_allowed_tokens_from_pool() {
 
 			// Verify that the DOT pool exists
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
+			assert!(Lending::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			let price = FixedU128::from_rational(1, 1);
 			let dot_borrow_amount = 500;
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -34,10 +34,10 @@ fn borrow_maximum_allowed_tokens_from_pool() {
 			));
 
 			let ksm_collateral_amount =
-				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
+				Lending::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
 
 			// BOB borrows 500 DOT using 1000 KSM as collateral
-			assert_ok!(TemplateModule::borrow(
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,               // asset to borrow
 				dot_borrow_amount, // amount to borrow
@@ -90,11 +90,11 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 
 			// Verify that the DOT pool exists
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
+			assert!(Lending::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			// Set price: 1 DOT = 0.1 KSM
 			let price = FixedU128::from_rational(1, 10);
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -104,8 +104,8 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 			// First borrow: partial amount
 			let dot_borrow_amount_1 = 250; // Assuming 50% collateral factor
 			let ksm_collateral_amount_1 =
-				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount_1, KSM).unwrap();
-			assert_ok!(TemplateModule::borrow(
+				Lending::estimate_collateral_amount(DOT, dot_borrow_amount_1, KSM).unwrap();
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount_1,
@@ -142,8 +142,8 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 			// Second borrow: another partial amount with additional collateral
 			let dot_borrow_amount_2 = 250; // Assuming 50% collateral factor
 			let ksm_collateral_amount_2 =
-				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount_2, KSM).unwrap();
-			assert_ok!(TemplateModule::borrow(
+				Lending::estimate_collateral_amount(DOT, dot_borrow_amount_2, KSM).unwrap();
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount_2,
@@ -203,11 +203,11 @@ fn repay_all_borrowed_tokens_to_pool() {
 
 			// Verify that the DOT pool exists
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
+			assert!(Lending::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -217,7 +217,7 @@ fn repay_all_borrowed_tokens_to_pool() {
 			// Borrow 500 DOT using 1000 KSM as collateral
 			let ksm_collateral_amount = 1000;
 			let dot_borrow_amount = 500;
-			assert_ok!(TemplateModule::borrow(
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount,
@@ -232,7 +232,7 @@ fn repay_all_borrowed_tokens_to_pool() {
 			assert_eq!(Fungibles::balance(DOT, &BOB), bob_initial_dot_balance + dot_borrow_amount);
 
 			// Repay all borrowed DOT
-			assert_ok!(TemplateModule::repay(
+			assert_ok!(Lending::repay(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount,
@@ -284,11 +284,11 @@ fn partial_repay_of_borrowed_tokens() {
 
 			// Verify that the DOT pool exists
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
+			assert!(Lending::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -298,7 +298,7 @@ fn partial_repay_of_borrowed_tokens() {
 			// Borrow 500 DOT using 1000 KSM as collateral
 			let ksm_collateral_amount = 1000;
 			let dot_borrow_amount = 500;
-			assert_ok!(TemplateModule::borrow(
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,               // asset to borrow
 				dot_borrow_amount, // amount to borrow
@@ -314,7 +314,7 @@ fn partial_repay_of_borrowed_tokens() {
 
 			// Partial repayment: BOB repays 200 DOT
 			let repayment_amount = 200;
-			assert_ok!(TemplateModule::repay(
+			assert_ok!(Lending::repay(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				repayment_amount,
@@ -403,11 +403,11 @@ fn repay_full_with_accumulated_interest() {
 
 			// Verify that the DOT pool exists
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
+			assert!(Lending::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -416,7 +416,7 @@ fn repay_full_with_accumulated_interest() {
 
 			let ksm_collateral_amount = 100_000;
 			let dot_borrow_amount = 50_000;
-			assert_ok!(TemplateModule::borrow(
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,               // asset to borrow
 				dot_borrow_amount, // amount to borrow
@@ -442,13 +442,13 @@ fn repay_full_with_accumulated_interest() {
 
 			// Fetch the lending pool to get the updated borrow index
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			let mut pool = TemplateModule::reserve_pools(asset_pool.clone()).unwrap();
+			let mut pool = Lending::reserve_pools(asset_pool.clone()).unwrap();
 
 			// Update the pool's indexes to accrue interest
 			assert_ok!(pool.update_indexes());
 
 			// Update the storage with the new pool state
-			TemplateModule::reserve_pools(asset_pool);
+			Lending::reserve_pools(asset_pool);
 
 			// Get BOB's loan
 			let loan = Borrows::<Test>::get((BOB, DOT, KSM)).expect("Loan should exist");
@@ -465,7 +465,7 @@ fn repay_full_with_accumulated_interest() {
 			assert!(bob_dot_balance >= repayable_amount);
 
 			// Repay the loan
-			assert_ok!(TemplateModule::repay(
+			assert_ok!(Lending::repay(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				repayable_amount,
@@ -525,11 +525,11 @@ fn partial_repay_with_accumulated_interest() {
 			let bob_initial_dot_balance = Fungibles::balance(DOT, &BOB);
 			let asset_pool = AssetPool::<Test>::from(DOT);
 			assert!(
-				TemplateModule::reserve_pools(asset_pool.clone()).is_some(),
+				Lending::reserve_pools(asset_pool.clone()).is_some(),
 				"DOT pool should exist"
 			);
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(TemplateModule::set_asset_price(
+			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				DOT,
 				KSM,
@@ -539,7 +539,7 @@ fn partial_repay_with_accumulated_interest() {
 			// Bob borrows DOT by providing KSM as collateral
 			let ksm_collateral_amount = 100_000;
 			let dot_borrow_amount = 50_000;
-			assert_ok!(TemplateModule::borrow(
+			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,               // asset to borrow
 				dot_borrow_amount, // amount to borrow
@@ -563,7 +563,7 @@ fn partial_repay_with_accumulated_interest() {
 			run_to_block(new_block_number);
 
 			// The interest should have accumulated over half a year
-			let mut pool = TemplateModule::reserve_pools(asset_pool.clone()).unwrap();
+			let mut pool = Lending::reserve_pools(asset_pool.clone()).unwrap();
 			// Update the pool's indexes to accrue interest
 			assert_ok!(pool.update_indexes());
 
@@ -583,7 +583,7 @@ fn partial_repay_with_accumulated_interest() {
 			let bob_ksm_balance_before = Fungibles::balance(KSM, &BOB);
 
 			// Bob makes a partial repayment
-			assert_ok!(TemplateModule::repay(
+			assert_ok!(Lending::repay(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				partial_repayment,
@@ -638,7 +638,7 @@ fn partial_repay_with_accumulated_interest() {
 			println!("Expected principal reduction: {:?}", expected_principal_reduction);
 
 			// Fetch the updated pool
-			pool = TemplateModule::reserve_pools(asset_pool.clone()).unwrap();
+			pool = Lending::reserve_pools(asset_pool.clone()).unwrap();
 
 			// Verify that the pool's borrowed balance has decreased
 			println!("Pool's borrowed balance after repayment: {:?}", pool.borrowed_balance);
