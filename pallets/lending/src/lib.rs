@@ -967,10 +967,9 @@ pub mod pallet {
 			asset: AssetIdOf<T>,
 			balance: AssetBalanceOf<T>,
 			collateral_asset: AssetIdOf<T>,
-			collateral_balance: AssetBalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_borrow(&who, asset, balance, collateral_asset, collateral_balance)?;
+			Self::do_borrow(&who, asset, balance, collateral_asset)?;
 			Ok(())
 		}
 
@@ -1365,29 +1364,13 @@ pub mod pallet {
 			asset: AssetIdOf<T>,
 			balance: AssetBalanceOf<T>,
 			collateral_asset: AssetIdOf<T>,
-			collateral_balance: AssetBalanceOf<T>,
 		) -> DispatchResult {
 			// First, let's check the balance amount to supply is valid
 			ensure!(balance > BalanceOf::<T>::zero(), Error::<T>::InvalidLiquidityWithdrawal);
-			ensure!(
-				collateral_balance > AssetBalanceOf::<T>::zero(),
-				Error::<T>::InvalidLiquidityWithdrawal
-			);
 
-			// let's check if our pool does exist
 			let asset_pool = AssetPool::<T>::from(asset);
 			let mut pool = LendingPoolStorage::<T>::get(&asset_pool)
 				.ok_or_else(|| DispatchError::from(Error::<T>::LendingPoolDoesNotExist))?;
-			let user_collateral_balance = T::Fungibles::reducible_balance(
-				collateral_asset,
-				who,
-				Preservation::Preserve,
-				Fortitude::Polite,
-			);
-			ensure!(
-				user_collateral_balance >= collateral_balance,
-				Error::<T>::NotEnoughLiquiditySupply
-			);
 
 			// let's check if the pool is active
 			ensure!(pool.is_active() == true, Error::<T>::LendingPoolNotActive);
@@ -1398,23 +1381,35 @@ pub mod pallet {
 			// Update pool's indexes
 			pool.update_indexes()?;
 
-			// check sufficiency of collateral asset
-			// get collateral asset value in terms of borrow-asset
-			let equivalent_asset_balance =
-				Self::get_equivalent_asset_amount(asset, collateral_asset, collateral_balance)?;
-			// get eligible borrow quantity based on reserve_factor
-			let eligible_asset_amount = pool.max_borrow_amount(equivalent_asset_balance)?;
-			// error if borrow is more than eligibility
-			ensure!(eligible_asset_amount >= balance, Error::<T>::NotEnoughCollateral);
+			let estimate_collateral_amount =
+				Self::estimate_collateral_amount(asset, balance, collateral_asset)?;
+			let user_collateral_balance = T::Fungibles::reducible_balance(
+				collateral_asset,
+				who,
+				Preservation::Preserve,
+				Fortitude::Polite,
+			);
+			ensure!(
+				user_collateral_balance >= estimate_collateral_amount,
+				Error::<T>::NotEnoughLiquiditySupply
+			);
 
 			// Save scaled balance as per current borrow_index
 			let scaled_balance = pool.scaled_borrow_balance(balance)?;
 
+			// Transfer the collateral to the pallet
+			T::Fungibles::transfer(
+				collateral_asset.clone(),
+				who,
+				&Self::account_id(),
+				estimate_collateral_amount,
+				Preservation::Preserve,
+			)?;
 			let borrow: UserBorrow<T> = UserBorrow {
 				borrowed_asset: asset,
 				borrowed_balance: scaled_balance,
 				collateral_asset,
-				collateral_balance,
+				collateral_balance: estimate_collateral_amount,
 				principal_balance: balance,
 			};
 
@@ -1447,20 +1442,12 @@ pub mod pallet {
 				Preservation::Preserve,
 			)?;
 
-			// Transfer the collateral to the pallet
-			T::Fungibles::transfer(
-				collateral_asset.clone(),
-				who,
-				&Self::account_id(),
-				collateral_balance,
-				Preservation::Preserve,
-			)?;
 			Self::deposit_event(Event::Borrowed {
 				who: who.clone(),
 				borrowed_asset_id: asset,
 				borrowed_balance: balance,
 				collateral_asset_id: collateral_asset,
-				collateral_balance,
+				collateral_balance: estimate_collateral_amount,
 			});
 			Ok(())
 		}

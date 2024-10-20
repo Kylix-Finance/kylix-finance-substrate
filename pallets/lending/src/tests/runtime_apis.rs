@@ -21,8 +21,8 @@ fn test_compute_user_ltv_on_max_borrow() {
 			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			let price = FixedU128::from_rational(1, 2);
-			let ksm_collateral_amount = 10_000;
 			let dot_borrow_amount = 500;
+
 			// Set DOT price in terms of USDT: 1 DOT = 1 USDT
 			assert_ok!(TemplateModule::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
@@ -47,14 +47,14 @@ fn test_compute_user_ltv_on_max_borrow() {
 			));
 
 			assert_ok!(TemplateModule::supply(RuntimeOrigin::signed(BOB), DOT, 1_000));
-
+			let ksm_collateral_amount =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			let (current_ltv, sale_ltv, liq_ltv) = TemplateModule::compute_user_ltv(&BOB);
@@ -184,10 +184,9 @@ fn test_get_asset_wise_supplies_with_one_supply() {
 			// apy and balance should be changed
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			let (supplied_assets, total_supply) = TemplateModule::get_asset_wise_supplies(&BOB);
@@ -295,7 +294,6 @@ fn test_get_asset_wise_borrows_collaterals_with_one_borrow() {
 			// Setup and activate the DOT lending pool
 			setup_active_pool(DOT, 1000);
 
-			let ksm_collateral_amount = 10_000;
 			let dot_borrow_amount = 500;
 			// Set DOT price in terms of USDT: 1 DOT = 1 USDT
 			assert_ok!(TemplateModule::set_asset_price(
@@ -316,15 +314,15 @@ fn test_get_asset_wise_borrows_collaterals_with_one_borrow() {
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			let (borrowed_assets, collateral_assets, total_borrow, total_collateral) =
 				TemplateModule::get_asset_wise_borrows_collaterals(&BOB);
-
+			let ksm_collateral_amount =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
 			assert_eq!(borrowed_assets.len(), 1);
 			assert_eq!(collateral_assets.len(), 1);
 
@@ -377,9 +375,7 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			));
 			assert_ok!(TemplateModule::activate_lending_pool(RuntimeOrigin::signed(ALICE), KSM));
 
-			let ksm_collateral_amount_1 = 10_000;
 			let dot_borrow_amount_1 = 500;
-			let dot_collateral_amount_2 = 5000;
 			let ksm_borrow_amount_2 = 1000;
 			// Set DOT price in terms of USDT: 1 DOT = 1 USDT
 			assert_ok!(TemplateModule::set_asset_price(
@@ -400,19 +396,17 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                     // asset to borrow
-				dot_borrow_amount_1,     // amount to borrow
-				KSM,                     // collateral asset
-				ksm_collateral_amount_1  // collateral amount
+				DOT,                 // asset to borrow
+				dot_borrow_amount_1, // amount to borrow
+				KSM
 			));
 
 			// BOB borrows 1000 KSM using 5_000 DOT as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				KSM,                     // asset to borrow
-				ksm_borrow_amount_2,     // amount to borrow
-				DOT,                     // collateral asset
-				dot_collateral_amount_2  // collateral amount
+				KSM,                 // asset to borrow
+				ksm_borrow_amount_2, // amount to borrow
+				DOT
 			));
 
 			let (borrowed_assets, collateral_assets, total_borrow, total_collateral) =
@@ -420,7 +414,10 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 
 			assert_eq!(borrowed_assets.len(), 2);
 			assert_eq!(collateral_assets.len(), 2);
-
+			let ksm_collateral_amount_1 =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount_1, KSM).unwrap();
+			let dot_collateral_amount_2 =
+				TemplateModule::estimate_collateral_amount(KSM, ksm_borrow_amount_2, DOT).unwrap();
 			//First borrow
 			// DOT
 			let dot_borrowed_asset = borrowed_assets.last().unwrap();
@@ -537,19 +534,17 @@ fn test_get_lending_pools_without_params() {
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                     // asset to borrow
-				dot_borrow_amount_1,     // amount to borrow
-				KSM,                     // collateral asset
-				ksm_collateral_amount_1  // collateral amount
+				DOT,                 // asset to borrow
+				dot_borrow_amount_1, // amount to borrow
+				KSM
 			));
 
 			// BOB borrows 1000 KSM using 5_000 DOT as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(ALICE),
-				KSM,                     // asset to borrow
-				ksm_borrow_amount_2,     // amount to borrow
-				DOT,                     // collateral asset
-				dot_collateral_amount_2  // collateral amount
+				KSM,                 // asset to borrow
+				ksm_borrow_amount_2, // amount to borrow
+				DOT
 			));
 
 			// case without parameters, all lending pools
@@ -654,19 +649,17 @@ fn test_get_lending_pools_with_asset_param() {
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                     // asset to borrow
-				dot_borrow_amount_1,     // amount to borrow
-				KSM,                     // collateral asset
-				ksm_collateral_amount_1  // collateral amount
+				DOT,                 // asset to borrow
+				dot_borrow_amount_1, // amount to borrow
+				KSM
 			));
 
 			// BOB borrows 1000 KSM using 5_000 DOT as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(ALICE),
-				KSM,                     // asset to borrow
-				ksm_borrow_amount_2,     // amount to borrow
-				DOT,                     // collateral asset
-				dot_collateral_amount_2  // collateral amount
+				KSM,                 // asset to borrow
+				ksm_borrow_amount_2, // amount to borrow
+				DOT
 			));
 
 			// case with asset id
@@ -748,19 +741,17 @@ fn test_get_lending_pools_with_account_and_asset() {
 			// BOB borrows 500 DOT using 10_000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                     // asset to borrow
-				dot_borrow_amount_1,     // amount to borrow
-				KSM,                     // collateral asset
-				ksm_collateral_amount_1  // collateral amount
+				DOT,                 // asset to borrow
+				dot_borrow_amount_1, // amount to borrow
+				KSM
 			));
 
 			// BOB borrows 1000 KSM using 5_000 DOT as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(ALICE),
-				KSM,                     // asset to borrow
-				ksm_borrow_amount_2,     // amount to borrow
-				DOT,                     // collateral asset
-				dot_collateral_amount_2  // collateral amount
+				KSM,                 // asset to borrow
+				ksm_borrow_amount_2, // amount to borrow
+				DOT
 			));
 
 			// case with asset id
