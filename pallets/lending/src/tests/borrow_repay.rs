@@ -25,7 +25,6 @@ fn borrow_maximum_allowed_tokens_from_pool() {
 			assert!(TemplateModule::reserve_pools(asset_pool).is_some(), "DOT pool should exist");
 
 			let price = FixedU128::from_rational(1, 1);
-			let ksm_collateral_amount = 1_000;
 			let dot_borrow_amount = 500;
 			assert_ok!(TemplateModule::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
@@ -34,25 +33,15 @@ fn borrow_maximum_allowed_tokens_from_pool() {
 				price
 			));
 
-			// Should be unable to borrow more than 50% of the liquidity
-			assert_noop!(
-				TemplateModule::borrow(
-					RuntimeOrigin::signed(BOB),
-					DOT,                   // asset to borrow
-					dot_borrow_amount + 1, // amount to borrow
-					KSM,                   // collateral asset
-					ksm_collateral_amount  // collateral amount
-				),
-				Error::<Test>::NotEnoughCollateral
-			);
+			let ksm_collateral_amount =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
 
 			// BOB borrows 500 DOT using 1000 KSM as collateral
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			// Check if the borrow event was emitted
@@ -113,14 +102,14 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 			));
 
 			// First borrow: partial amount
-			let ksm_collateral_amount_1 = 500;
 			let dot_borrow_amount_1 = 250; // Assuming 50% collateral factor
+			let ksm_collateral_amount_1 =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount_1, KSM).unwrap();
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount_1,
-				KSM,
-				ksm_collateral_amount_1
+				KSM
 			));
 
 			// Check if the first borrow event was emitted
@@ -151,14 +140,14 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 			);
 
 			// Second borrow: another partial amount with additional collateral
-			let ksm_collateral_amount_2 = 500;
 			let dot_borrow_amount_2 = 250; // Assuming 50% collateral factor
+			let ksm_collateral_amount_2 =
+				TemplateModule::estimate_collateral_amount(DOT, dot_borrow_amount_2, KSM).unwrap();
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount_2,
-				KSM,
-				ksm_collateral_amount_2
+				KSM
 			));
 
 			// Check if the second borrow event was emitted
@@ -232,8 +221,7 @@ fn repay_all_borrowed_tokens_to_pool() {
 				RuntimeOrigin::signed(BOB),
 				DOT,
 				dot_borrow_amount,
-				KSM,
-				ksm_collateral_amount
+				KSM
 			));
 
 			// Verify balances after borrowing
@@ -312,10 +300,9 @@ fn partial_repay_of_borrowed_tokens() {
 			let dot_borrow_amount = 500;
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			// Verify balances after borrowing
@@ -431,10 +418,9 @@ fn repay_full_with_accumulated_interest() {
 			let dot_borrow_amount = 50_000;
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			// Verify balances after borrowing
@@ -555,10 +541,9 @@ fn partial_repay_with_accumulated_interest() {
 			let dot_borrow_amount = 50_000;
 			assert_ok!(TemplateModule::borrow(
 				RuntimeOrigin::signed(BOB),
-				DOT,                   // asset to borrow
-				dot_borrow_amount,     // amount to borrow
-				KSM,                   // collateral asset
-				ksm_collateral_amount  // collateral amount
+				DOT,               // asset to borrow
+				dot_borrow_amount, // amount to borrow
+				KSM
 			));
 
 			// Verify balances after borrowing
