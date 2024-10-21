@@ -564,6 +564,7 @@ fn test_get_lending_pools_without_params() {
 			assert_ne!(dot_lending_pool.utilization, FixedU128::zero());
 			assert_ne!(dot_lending_pool.borrow_apy, FixedU128::zero());
 			assert_ne!(dot_lending_pool.supply_apy, FixedU128::zero());
+			assert_eq!(dot_lending_pool.user_supplied_balance, None);
 			assert_eq!(dot_lending_pool.user_asset_balance, None);
 
 			//KSM
@@ -578,6 +579,7 @@ fn test_get_lending_pools_without_params() {
 			assert_ne!(ksm_lending_pool.utilization, FixedU128::zero());
 			assert_ne!(ksm_lending_pool.borrow_apy, FixedU128::zero());
 			assert_ne!(ksm_lending_pool.supply_apy, FixedU128::zero());
+			assert_eq!(dot_lending_pool.user_supplied_balance, None);
 			assert_eq!(ksm_lending_pool.user_asset_balance, None);
 
 			// total in USDT supply = initial balance of pools 3000 - borrow amounts 2500 + supplied
@@ -679,6 +681,7 @@ fn test_get_lending_pools_with_asset_param() {
 			assert_ne!(dot_lending_pool.utilization, FixedU128::zero());
 			assert_ne!(dot_lending_pool.borrow_apy, FixedU128::zero());
 			assert_ne!(dot_lending_pool.supply_apy, FixedU128::zero());
+			assert_eq!(dot_lending_pool.user_supplied_balance, None);
 			assert_eq!(dot_lending_pool.user_asset_balance, None);
 			assert_eq!(totals.total_supply, initial_balance - dot_borrow_amount_1);
 			assert_eq!(totals.total_borrow, dot_borrow_amount_1);
@@ -697,8 +700,8 @@ fn test_get_lending_pools_with_account_and_asset() {
 		.build()
 		.execute_with(|| {
 			// Setup and activate the DOT lending pool
-			// setup_active_pool(DOT, 1000);
-			let initial_balance = 1000;
+			// setup_active_pool(DOT, 4333);
+			let initial_balance = 4333;
 			assert_ok!(Lending::create_lending_pool(
 				RuntimeOrigin::signed(ALICE),
 				LENDING_POOL_TOKEN + 2,
@@ -715,11 +718,9 @@ fn test_get_lending_pools_with_account_and_asset() {
 			));
 			assert_ok!(Lending::activate_lending_pool(RuntimeOrigin::signed(ALICE), KSM));
 
-			let ksm_collateral_amount_1 = 10_000;
 			let dot_borrow_amount_1 = 500;
-			let dot_collateral_amount_2 = 5000;
 			let ksm_borrow_amount_2 = 1000;
-			let ksm_supplied = 1000;
+			let ksm_supplied = 1234;
 			// Set DOT price in terms of USDT: 1 DOT = 1 USDT
 			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
@@ -728,17 +729,17 @@ fn test_get_lending_pools_with_account_and_asset() {
 				FixedU128::from_rational(1, 1), // 1 DOT = 1 USDT
 			));
 
-			// Set KSM price in terms of USDT: 1 KSM = 2 USDT
+			// Set KSM price in terms of USDT: 1 KSM = 1 USDT
 			assert_ok!(Lending::set_asset_price(
 				RuntimeOrigin::signed(ALICE),
 				KSM,
 				USDT,
-				FixedU128::from_rational(2, 1),
+				FixedU128::from_rational(1, 1),
 			));
 
 			assert_ok!(Lending::supply(RuntimeOrigin::signed(ALICE), KSM, ksm_supplied));
 
-			// BOB borrows 500 DOT using 10_000 KSM as collateral
+			// BOB borrows 500 DOT using KSM as collateral
 			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(BOB),
 				DOT,                 // asset to borrow
@@ -746,7 +747,7 @@ fn test_get_lending_pools_with_account_and_asset() {
 				KSM
 			));
 
-			// BOB borrows 1000 KSM using 5_000 DOT as collateral
+			// ALICE borrows 1000 KSM using DOT as collateral
 			assert_ok!(Lending::borrow(
 				RuntimeOrigin::signed(ALICE),
 				KSM,                 // asset to borrow
@@ -756,9 +757,7 @@ fn test_get_lending_pools_with_account_and_asset() {
 
 			// case with asset id
 			let (lending_pools, totals) = Lending::get_lending_pools(Some(DOT), Some(&BOB));
-
 			assert_eq!(lending_pools.len(), 1);
-
 			// DOT
 			let dot_lending_pool = lending_pools.first().unwrap();
 			let (expected_name, expected_decimals, expected_symbol) =
@@ -771,9 +770,30 @@ fn test_get_lending_pools_with_account_and_asset() {
 			assert_ne!(dot_lending_pool.utilization, FixedU128::zero());
 			assert_ne!(dot_lending_pool.borrow_apy, FixedU128::zero());
 			assert_ne!(dot_lending_pool.supply_apy, FixedU128::zero());
+			assert_eq!(dot_lending_pool.user_supplied_balance, Some(0));
 			assert_eq!(dot_lending_pool.user_asset_balance, Some(1_000_000 + dot_borrow_amount_1));
 			assert_eq!(totals.total_supply, initial_balance - dot_borrow_amount_1);
 			assert_eq!(totals.total_borrow, dot_borrow_amount_1);
+
+			let (lending_pools, totals) = Lending::get_lending_pools(Some(KSM), Some(&ALICE));
+			assert_eq!(lending_pools.len(), 1);
+			// KSM
+			let ksm_lending_pool = lending_pools.first().unwrap();
+			let (expected_name, expected_decimals, expected_symbol) =
+				Lending::get_metadata(KSM);
+			assert_eq!(ksm_lending_pool.asset_id, KSM);
+			assert_eq!(ksm_lending_pool.asset, expected_name);
+			assert_eq!(ksm_lending_pool.asset_symbol, expected_symbol);
+			assert_eq!(ksm_lending_pool.asset_decimals, expected_decimals);
+			assert_ne!(ksm_lending_pool.collateral_q, 0u64);
+			assert_ne!(ksm_lending_pool.utilization, FixedU128::zero());
+			assert_ne!(ksm_lending_pool.borrow_apy, FixedU128::zero());
+			assert_ne!(ksm_lending_pool.supply_apy, FixedU128::zero());
+			assert_eq!(ksm_lending_pool.user_supplied_balance, Some(initial_balance + ksm_supplied));
+			assert_eq!(ksm_lending_pool.user_asset_balance, Some(1_000_000 + ksm_borrow_amount_2 - ksm_supplied - initial_balance));
+			assert_eq!(totals.total_supply, initial_balance + ksm_supplied - ksm_borrow_amount_2);
+			assert_eq!(totals.total_borrow, ksm_borrow_amount_2);
+
 		});
 }
 

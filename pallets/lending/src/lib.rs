@@ -105,6 +105,7 @@ pub struct LendingPoolInfo {
 	pub supply_apy: FixedU128,
 	pub supply_apy_s: FixedU128,
 	pub is_activated: bool,
+	pub user_supplied_balance: Option<u128>,
 	pub user_asset_balance: Option<u128>,
 }
 
@@ -1880,12 +1881,17 @@ pub mod pallet {
 						Self::get_metadata(pool.lend_token_id);
 					let asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
-					let user_asset_balance = match account {
-						Some(account) => Self::get_asset_balance(&account, pool.lend_token_id)
-							.ok()
-							.map(|balance| balance.saturated_into::<u128>()),
-						None => None,
-					};
+					let (user_supplied_balance, user_asset_balance) = match account {
+						Some(account) => (
+							Self::get_asset_balance(&account, pool.id)
+								.ok()
+								.map(|supplied_balance| supplied_balance.saturated_into::<u128>()),
+							Self::get_asset_balance(&account, pool.lend_token_id)
+								.ok()
+								.map(|asset_balance| asset_balance.saturated_into::<u128>()),
+						),
+						None => (None, None),
+					};					
 
 					// Convert reserve balance and borrowed balance to equivalent asset amount in
 					// USDT
@@ -1923,6 +1929,7 @@ pub mod pallet {
 						supply_apy: pool.supply_interest_rate().unwrap_or_default().into(),
 						supply_apy_s: FixedU128::zero(), // Placeholder value
 						is_activated: pool.activated,
+						user_supplied_balance,
 						user_asset_balance,
 					}
 				})
