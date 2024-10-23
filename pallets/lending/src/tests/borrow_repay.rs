@@ -26,12 +26,7 @@ fn borrow_maximum_allowed_tokens_from_pool() {
 
 			let price = FixedU128::from_rational(1, 1);
 			let dot_borrow_amount = 500;
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			let ksm_collateral_amount =
 				Lending::estimate_collateral_amount(DOT, dot_borrow_amount, KSM).unwrap();
@@ -94,23 +89,13 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 
 			// Set price: 1 DOT = 0.1 KSM
 			let price = FixedU128::from_rational(1, 10);
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			// First borrow: partial amount
 			let dot_borrow_amount_1 = 250; // Assuming 50% collateral factor
 			let ksm_collateral_amount_1 =
 				Lending::estimate_collateral_amount(DOT, dot_borrow_amount_1, KSM).unwrap();
-			assert_ok!(Lending::borrow(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				dot_borrow_amount_1,
-				KSM
-			));
+			assert_ok!(Lending::borrow(RuntimeOrigin::signed(BOB), DOT, dot_borrow_amount_1, KSM));
 
 			// Check if the first borrow event was emitted
 			System::assert_last_event(
@@ -143,12 +128,7 @@ fn borrow_partial_amount_of_tokens_from_pool() {
 			let dot_borrow_amount_2 = 250; // Assuming 50% collateral factor
 			let ksm_collateral_amount_2 =
 				Lending::estimate_collateral_amount(DOT, dot_borrow_amount_2, KSM).unwrap();
-			assert_ok!(Lending::borrow(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				dot_borrow_amount_2,
-				KSM
-			));
+			assert_ok!(Lending::borrow(RuntimeOrigin::signed(BOB), DOT, dot_borrow_amount_2, KSM));
 
 			// Check if the second borrow event was emitted
 			System::assert_last_event(
@@ -207,22 +187,12 @@ fn repay_all_borrowed_tokens_to_pool() {
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			// Borrow 500 DOT using 1000 KSM as collateral
 			let ksm_collateral_amount = 1000;
 			let dot_borrow_amount = 500;
-			assert_ok!(Lending::borrow(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				dot_borrow_amount,
-				KSM
-			));
+			assert_ok!(Lending::borrow(RuntimeOrigin::signed(BOB), DOT, dot_borrow_amount, KSM));
 
 			// Verify balances after borrowing
 			assert_eq!(
@@ -232,12 +202,7 @@ fn repay_all_borrowed_tokens_to_pool() {
 			assert_eq!(Fungibles::balance(DOT, &BOB), bob_initial_dot_balance + dot_borrow_amount);
 
 			// Repay all borrowed DOT
-			assert_ok!(Lending::repay(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				dot_borrow_amount,
-				KSM
-			));
+			assert_ok!(Lending::repay(RuntimeOrigin::signed(BOB), DOT, dot_borrow_amount, KSM));
 
 			// Check if the repay event was emitted
 			System::assert_last_event(
@@ -288,12 +253,7 @@ fn partial_repay_of_borrowed_tokens() {
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			// Borrow 500 DOT using 1000 KSM as collateral
 			let ksm_collateral_amount = 1000;
@@ -314,12 +274,7 @@ fn partial_repay_of_borrowed_tokens() {
 
 			// Partial repayment: BOB repays 200 DOT
 			let repayment_amount = 200;
-			assert_ok!(Lending::repay(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				repayment_amount,
-				KSM
-			));
+			assert_ok!(Lending::repay(RuntimeOrigin::signed(BOB), DOT, repayment_amount, KSM));
 
 			// Check if the repay event was emitted
 			System::assert_last_event(
@@ -341,9 +296,9 @@ fn partial_repay_of_borrowed_tokens() {
 
 			// Calculate expected collateral release
 			// Released collateral = repayment_amount / total_borrowed * collateral_balance
-			let expected_collateral_release = (repayment_amount as u128
-				* ksm_collateral_amount as u128)
-				/ dot_borrow_amount as u128;
+			let expected_collateral_release = (repayment_amount as u128 *
+				ksm_collateral_amount as u128) /
+				dot_borrow_amount as u128;
 			let expected_collateral_release = expected_collateral_release;
 
 			// Verify BOB's KSM balance increased by released collateral
@@ -407,12 +362,7 @@ fn repay_full_with_accumulated_interest() {
 
 			// Set price: 1 DOT = 1 KSM for simplicity
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			let ksm_collateral_amount = 100_000;
 			let dot_borrow_amount = 50_000;
@@ -465,12 +415,7 @@ fn repay_full_with_accumulated_interest() {
 			assert!(bob_dot_balance >= repayable_amount);
 
 			// Repay the loan
-			assert_ok!(Lending::repay(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				repayable_amount,
-				KSM
-			));
+			assert_ok!(Lending::repay(RuntimeOrigin::signed(BOB), DOT, repayable_amount, KSM));
 
 			// Check if the repay event was emitted
 			System::assert_last_event(
@@ -524,17 +469,9 @@ fn partial_repay_with_accumulated_interest() {
 			let bob_initial_ksm_balance = Fungibles::balance(KSM, &BOB);
 			let bob_initial_dot_balance = Fungibles::balance(DOT, &BOB);
 			let asset_pool = AssetPool::<Test>::from(DOT);
-			assert!(
-				Lending::reserve_pools(asset_pool.clone()).is_some(),
-				"DOT pool should exist"
-			);
+			assert!(Lending::reserve_pools(asset_pool.clone()).is_some(), "DOT pool should exist");
 			let price = FixedU128::from_rational(1, 1);
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			// Bob borrows DOT by providing KSM as collateral
 			let ksm_collateral_amount = 100_000;
@@ -583,12 +520,7 @@ fn partial_repay_with_accumulated_interest() {
 			let bob_ksm_balance_before = Fungibles::balance(KSM, &BOB);
 
 			// Bob makes a partial repayment
-			assert_ok!(Lending::repay(
-				RuntimeOrigin::signed(BOB),
-				DOT,
-				partial_repayment,
-				KSM
-			));
+			assert_ok!(Lending::repay(RuntimeOrigin::signed(BOB), DOT, partial_repayment, KSM));
 
 			// Fetch the updated loan
 			loan = Borrows::<Test>::get((BOB, DOT, KSM)).expect("Loan should still exist");
@@ -613,8 +545,8 @@ fn partial_repay_with_accumulated_interest() {
 
 			// Check that the remaining repayable amount is approximately half of the original
 			assert!(
-				remaining_repayable_amount > repayable_amount / 2 - 1_000
-					&& remaining_repayable_amount < repayable_amount / 2 + 1_000,
+				remaining_repayable_amount > repayable_amount / 2 - 1_000 &&
+					remaining_repayable_amount < repayable_amount / 2 + 1_000,
 				"Remaining repayable amount should be approximately half of the original"
 			);
 

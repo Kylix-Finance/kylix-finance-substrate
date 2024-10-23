@@ -123,6 +123,7 @@ pub struct AssetInfo {
 	pub decimals: u8,
 	pub asset_icon: Vec<u8>,
 	pub balance: u128,
+	pub usdt_balance: u128,
 }
 
 /// Supplied asset definition. Used as response for rpc
@@ -1742,8 +1743,7 @@ pub mod pallet {
 			let release_amount_u128 = repay_ratio
 				.checked_mul(&FixedU128::from(balance_u128))
 				.ok_or(Error::<T>::OverflowError)?
-				.into_inner()
-				/ FixedU128::accuracy();
+				.into_inner() / FixedU128::accuracy();
 
 			let release_amount = release_amount_u128.saturated_into::<AssetBalanceOf<T>>();
 
@@ -1826,6 +1826,35 @@ pub mod pallet {
 			Ok(price)
 		}
 
+		/// Retrieves the equivalent value in USDT for a given collateral balance (internal
+		/// function).
+		///
+		/// This internal function calculates the equivalent value of a given collateral asset in
+		/// terms of USDT. It uses the exchange rates stored in the `AssetPrices` storage to convert
+		/// the collateral balance into USDT. If no exchange rate is available, it returns
+		/// the default value (usually zero).
+		///
+		/// # Arguments
+		///
+		/// * `collateral_asset` - The asset ID of the collateral being evaluated.
+		/// * `collateral_balance` - The balance of the collateral asset to be converted to USDT.
+		///
+		/// # Returns
+		///
+		/// The equivalent balance in USDT, or a default value (typically zero) if the conversion
+		/// cannot be performed due to missing price data.
+		fn get_usdt_equivalent_value(
+			collateral_asset: AssetIdOf<T>,
+			collateral_balance: AssetBalanceOf<T>,
+		) -> AssetBalanceOf<T> {
+			Self::get_equivalent_asset_amount(
+				1, // USDT
+				collateral_asset,
+				collateral_balance,
+			)
+			.unwrap_or_default()
+		}
+
 		/// Retrieves metadata for a given asset.
 		///
 		/// # Arguments
@@ -1891,23 +1920,14 @@ pub mod pallet {
 								.map(|asset_balance| asset_balance.saturated_into::<u128>()),
 						),
 						None => (None, None),
-					};					
+					};
 
 					// Convert reserve balance and borrowed balance to equivalent asset amount in
 					// USDT
-					let equivalent_asset_supply_amount = Self::get_equivalent_asset_amount(
-						1, // USDT
-						pool.lend_token_id,
-						pool.reserve_balance,
-					)
-					.unwrap_or_default();
-
-					let equivalent_asset_borrow_amount = Self::get_equivalent_asset_amount(
-						1, // USDT
-						pool.lend_token_id,
-						pool.borrowed_balance,
-					)
-					.unwrap_or_default();
+					let equivalent_asset_supply_amount =
+						Self::get_usdt_equivalent_value(pool.lend_token_id, pool.reserve_balance);
+					let equivalent_asset_borrow_amount =
+						Self::get_usdt_equivalent_value(pool.lend_token_id, pool.borrowed_balance);
 
 					// Accumulate totals
 					total_supply = total_supply
@@ -1976,22 +1996,19 @@ pub mod pallet {
 					// Calculate the supplied amount by multiplying LP balance with supply index
 					let supplied_amount = pool.accrued_deposit(lp_balance).ok()?;
 
-					let asset_balance = Self::get_asset_balance(&account, pool.lend_token_id)
-						.ok()?
-						.saturated_into::<u128>();
+					let asset_balance =
+						Self::get_asset_balance(&account, pool.lend_token_id).ok()?;
 
 					// Retrieve metadata for the pool's asset
 					let (asset_name, asset_decimals, asset_symbol) =
 						Self::get_metadata(pool.lend_token_id);
 					let asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
-					// Calculate the equivalent supplied amount
-					let equivalent_supplied_amount = Self::get_equivalent_asset_amount(
-						1, // USDT
-						pool.lend_token_id,
-						supplied_amount,
-					)
-					.unwrap_or_default();
+					// Calculate the equivalents in USDT
+					let equivalent_balance =
+						Self::get_usdt_equivalent_value(pool.lend_token_id, asset_balance);
+					let equivalent_supplied_amount =
+						Self::get_usdt_equivalent_value(pool.lend_token_id, supplied_amount);
 
 					// Calculate the current APY for this pool
 					let apy = pool.supply_interest_rate().unwrap_or_default();
@@ -2008,7 +2025,8 @@ pub mod pallet {
 							asset_symbol,
 							decimals: asset_decimals,
 							asset_icon,
-							balance: asset_balance,
+							balance: asset_balance.saturated_into::<u128>(),
+							usdt_balance: equivalent_balance.saturated_into::<u128>(),
 						},
 						apy,
 						supplied: supplied_amount.saturated_into::<u128>(),
@@ -2071,10 +2089,8 @@ pub mod pallet {
 				};
 
 				// Handle borrowed assets
-				let borrow_balance = Self::get_asset_balance(&account, borrowed_asset)
-					.ok()
-					.map(|amount| amount.saturated_into::<u128>())
-					.unwrap_or_default();
+				let borrow_balance =
+					Self::get_asset_balance(&account, borrowed_asset).ok().unwrap_or_default();
 
 				// Retrieve asset metadata for the borrowed asset
 				let (borrow_asset_name, borrow_asset_decimals, borrow_asset_symbol) =
@@ -2082,12 +2098,10 @@ pub mod pallet {
 				let borrow_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
 				// Calculate equivalent borrowed amount in USDT
-				let equivalent_borrowed_amount = Self::get_equivalent_asset_amount(
-					1, // USDT
-					borrowed_asset,
-					borrowed_amount,
-				)
-				.unwrap_or_default();
+				let equivalent_borrowed_amount =
+					Self::get_usdt_equivalent_value(borrowed_asset, borrowed_amount);
+				let equivalent_balance =
+					Self::get_usdt_equivalent_value(borrowed_asset, borrow_balance);
 
 				// Accumulate total borrowed amount
 				total_borrow = total_borrow
@@ -2101,7 +2115,8 @@ pub mod pallet {
 						asset_name: borrow_asset_name,
 						decimals: borrow_asset_decimals,
 						asset_icon: borrow_asset_icon,
-						balance: borrow_balance,
+						balance: borrow_balance.saturated_into::<u128>(),
+						usdt_balance: equivalent_balance.saturated_into::<u128>(),
 					},
 					apy: pool.borrow_interest_rate().unwrap_or_default(),
 					borrowed: borrowed_amount.saturated_into::<u128>(),
@@ -2116,12 +2131,8 @@ pub mod pallet {
 				let collateral_asset_icon = "<url>/dot.svg".as_bytes().to_vec(); // Placeholder for asset icon
 
 				// Calculate equivalent collateral amount in USDT
-				let equivalent_collateral_amount = Self::get_equivalent_asset_amount(
-					1, // USDT
-					collateral_asset,
-					collateral_balance,
-				)
-				.unwrap_or_default();
+				let equivalent_collateral_amount =
+					Self::get_usdt_equivalent_value(collateral_asset, collateral_balance);
 
 				// Accumulate total collateral amount
 				total_collateral = total_collateral
@@ -2136,6 +2147,7 @@ pub mod pallet {
 						decimals: collateral_asset_decimals,
 						asset_icon: collateral_asset_icon,
 						balance: collateral_balance.saturated_into::<u128>(),
+						usdt_balance: equivalent_collateral_amount.saturated_into::<u128>(),
 					},
 				});
 			}

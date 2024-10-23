@@ -214,12 +214,12 @@ pub fn get_pallet_balance(asset: AssetIdOf<Test>) -> AssetBalanceOf<Test> {
 }
 
 pub fn run_to_block(n: u64) {
-    let current_block = System::block_number();
-    if n > current_block {
-        Lending::on_finalize(current_block);
-        System::set_block_number(n);
-        let time_difference = (n - current_block) * BLOCK_TIME_MS;
-        Timestamp::set_timestamp(Timestamp::get() + time_difference);
-        Lending::on_initialize(System::block_number());
-    }
+	let current_block = System::block_number();
+	if n > current_block {
+		Lending::on_finalize(current_block);
+		System::set_block_number(n);
+		let time_difference = (n - current_block) * BLOCK_TIME_MS;
+		Timestamp::set_timestamp(Timestamp::get() + time_difference);
+		Lending::on_initialize(System::block_number());
+	}
 }

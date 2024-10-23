@@ -2,8 +2,10 @@ use crate::rpc_api::LendingPoolApiServer;
 use jsonrpsee::core::RpcResult;
 use kylix_runtime::{
 	lending::{
-		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
-	}, AccountId, AssetId, Balance, LendingPoolApi, UserLTVInfo
+		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset,
+		TotalBorrow, TotalCollateral, TotalDeposit,
+	},
+	AccountId, AssetId, Balance, LendingPoolApi, UserLTVInfo,
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -17,7 +19,8 @@ use std::sync::Arc;
 pub struct LendingPoolApiImpl<C, P> {
 	/// Shared reference to the client for accessing blockchain state and runtime APIs.
 	client: Arc<C>,
-	/// Marker for associating the struct with a type `P`, used when the implementation depends on a phantom type parameter.
+	/// Marker for associating the struct with a type `P`, used when the implementation depends on
+	/// a phantom type parameter.
 	_marker: std::marker::PhantomData<P>,
 }
 
@@ -26,7 +29,8 @@ impl<C, P> LendingPoolApiImpl<C, P> {
 	///
 	/// # Arguments
 	///
-	/// * `client` - An `Arc` reference to the client providing access to runtime APIs and blockchain state.
+	/// * `client` - An `Arc` reference to the client providing access to runtime APIs and
+	///   blockchain state.
 	pub fn new(client: Arc<C>) -> Self {
 		Self { client, _marker: Default::default() }
 	}
@@ -40,7 +44,8 @@ where
 {
 	/// Retrieves lending pools and their aggregated totals.
 	///
-	/// Calls the `get_lending_pools` runtime API to fetch current lending pool states and their totals.
+	/// Calls the `get_lending_pools` runtime API to fetch current lending pool states and their
+	/// totals.
 	///
 	/// # Returns
 	///
@@ -51,7 +56,11 @@ where
 	/// # Errors
 	///
 	/// Returns an error if the runtime API call fails.
-	fn get_lending_pools(&self, asset_id: Option<AssetId>, account_id: Option<AccountId>) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)> {
+	fn get_lending_pools(
+		&self,
+		asset_id: Option<AssetId>,
+		account_id: Option<AccountId>,
+	) -> RpcResult<(Vec<LendingPoolInfo>, AggregatedTotals)> {
 		// Access runtime API.
 		let api = self.client.runtime_api();
 		// Retrieve hash of the best block.
@@ -102,7 +111,8 @@ where
 	///
 	/// # Returns
 	///
-	/// `RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>` containing:
+	/// `RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>`
+	/// containing:
 	/// - Vectors of `BorrowedAsset` and `CollateralAsset`.
 	/// - `TotalBorrow` and `TotalCollateral` for the user.
 	fn get_asset_wise_borrows_collaterals(
@@ -144,15 +154,20 @@ where
 	/// A `RpcResult<Option<Balance>>` containing the estimated amount of collateral required.
 	fn get_estimate_collateral_amount(
 		&self,
-		borrow_asset:AssetId,
-		borrow_amount:Balance,
-		collateral_asset:AssetId,
-	) -> RpcResult<Option<Balance> > {
+		borrow_asset: AssetId,
+		borrow_amount: Balance,
+		collateral_asset: AssetId,
+	) -> RpcResult<Option<Balance>> {
 		let api = self.client.runtime_api();
 		let best_block_hash = self.client.info().best_hash;
 
 		let result = api
-			.get_estimate_collateral_amount(best_block_hash, borrow_asset, borrow_amount, collateral_asset)
+			.get_estimate_collateral_amount(
+				best_block_hash,
+				borrow_asset,
+				borrow_amount,
+				collateral_asset,
+			)
 			.map_err(|e| jsonrpsee::core::Error::Custom(e.to_string()))?;
 		Ok(result)
 	}

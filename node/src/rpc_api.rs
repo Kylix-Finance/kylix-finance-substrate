@@ -1,21 +1,23 @@
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use kylix_runtime::{
 	lending::{
-		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset, TotalBorrow, TotalCollateral, TotalDeposit,
-	}, AccountId, AssetId, Balance, UserLTVInfo
+		AggregatedTotals, BorrowedAsset, CollateralAsset, LendingPoolInfo, SuppliedAsset,
+		TotalBorrow, TotalCollateral, TotalDeposit,
+	},
+	AccountId, AssetId, Balance, UserLTVInfo,
 };
 use sp_runtime::FixedU128;
 
 /// Custom RPC interface for lending pool interactions.
 ///
-/// This trait outlines the RPC methods available for interacting with lending pools 
-/// on the blockchain. It is marked with the `#[rpc(client, server)]` attribute to 
+/// This trait outlines the RPC methods available for interacting with lending pools
+/// on the blockchain. It is marked with the `#[rpc(client, server)]` attribute to
 /// automatically generate client and server implementations for each RPC method.
 #[rpc(client, server)]
 pub trait LendingPoolApi {
 	/// Retrieves lending pool information and aggregated totals.
 	///
-	/// Returns details of all lending pools, including pool identifiers, associated assets, 
+	/// Returns details of all lending pools, including pool identifiers, associated assets,
 	/// and their aggregated totals.
 	///
 	/// # Returns
@@ -26,7 +28,7 @@ pub trait LendingPoolApi {
 	///
 	/// # Errors
 	///
-	/// Returns an `RpcResult` containing an error if data retrieval fails, e.g., due to 
+	/// Returns an `RpcResult` containing an error if data retrieval fails, e.g., due to
 	/// blockchain state access issues.
 	#[method(name = "getLendingPools")]
 	fn get_lending_pools(
@@ -72,7 +74,8 @@ pub trait LendingPoolApi {
 	///
 	/// # Returns
 	///
-	/// * `RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>` - A tuple containing:
+	/// * `RpcResult<(Vec<BorrowedAsset>, Vec<CollateralAsset>, TotalBorrow, TotalCollateral)>` - A
+	///   tuple containing:
 	///   - A vector of `BorrowedAsset`.
 	///   - A vector of `CollateralAsset`.
 	///   - `TotalBorrow` and `TotalCollateral` values for the user.
@@ -112,12 +115,12 @@ pub trait LendingPoolApi {
 	///
 	/// # Returns
 	///
-	/// * `RpcResult<Option<Balance>>` - The estimated amount of collateral required as `Balance`, 
+	/// * `RpcResult<Option<Balance>>` - The estimated amount of collateral required as `Balance`,
 	///   if the estimation is available.
 	///
 	/// # Errors
 	///
-	/// Returns an error if the estimation process fails or cannot retrieve the necessary data 
+	/// Returns an error if the estimation process fails or cannot retrieve the necessary data
 	/// from the runtime.
 	#[method(name = "getEstimateCollateralAmount")]
 	fn get_estimate_collateral_amount(

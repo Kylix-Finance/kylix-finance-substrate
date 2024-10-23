@@ -39,12 +39,7 @@ fn test_compute_user_ltv_on_max_borrow() {
 				FixedU128::from_rational(2, 1), // 1 KSM = 2 USDT
 			));
 
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			assert_ok!(Lending::supply(RuntimeOrigin::signed(BOB), DOT, 1_000));
 			let ksm_collateral_amount =
@@ -155,12 +150,7 @@ fn test_get_asset_wise_supplies_with_one_supply() {
 				FixedU128::from_rational(2, 1), // 1 KSM = 2 USDT
 			));
 
-			assert_ok!(Lending::set_asset_price(
-				RuntimeOrigin::signed(ALICE),
-				DOT,
-				KSM,
-				price
-			));
+			assert_ok!(Lending::set_asset_price(RuntimeOrigin::signed(ALICE), DOT, KSM, price));
 
 			assert_ok!(Lending::supply(RuntimeOrigin::signed(BOB), DOT, 1_000));
 
@@ -169,8 +159,7 @@ fn test_get_asset_wise_supplies_with_one_supply() {
 			assert_eq!(supplied_assets_size, 1);
 
 			let supplied_asset = supplied_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(supplied_asset.asset_info.asset_id, DOT);
 			assert_eq!(supplied_asset.asset_info.asset_name, expected_name);
 			assert_eq!(supplied_asset.asset_info.asset_symbol, expected_symbol);
@@ -194,8 +183,7 @@ fn test_get_asset_wise_supplies_with_one_supply() {
 			assert_eq!(supplied_assets_size, 1);
 
 			let supplied_asset = supplied_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(supplied_asset.asset_info.asset_id, DOT);
 			assert_eq!(supplied_asset.asset_info.asset_name, expected_name);
 			assert_eq!(supplied_asset.asset_info.asset_symbol, expected_symbol);
@@ -253,8 +241,7 @@ fn test_get_asset_wise_supplies_with_two_supply() {
 
 			// DOT
 			let dot_supplied_asset = supplied_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_supplied_asset.asset_info.asset_id, DOT);
 			assert_eq!(dot_supplied_asset.asset_info.asset_name, expected_name);
 			assert_eq!(dot_supplied_asset.asset_info.asset_symbol, expected_symbol);
@@ -265,8 +252,7 @@ fn test_get_asset_wise_supplies_with_two_supply() {
 
 			//KSM
 			let ksm_supplied_asset = supplied_assets.last().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_supplied_asset.asset_info.asset_id, KSM);
 			assert_eq!(ksm_supplied_asset.asset_info.asset_name, expected_name);
 			assert_eq!(ksm_supplied_asset.asset_info.asset_symbol, expected_symbol);
@@ -328,8 +314,7 @@ fn test_get_asset_wise_borrows_collaterals_with_one_borrow() {
 
 			// DOT
 			let dot_borrowed_asset = borrowed_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_id, DOT);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_name, expected_name);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_symbol, expected_symbol);
@@ -340,8 +325,7 @@ fn test_get_asset_wise_borrows_collaterals_with_one_borrow() {
 
 			//KSM
 			let ksm_collateral_asset = collateral_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_id, KSM);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_name, expected_name);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_symbol, expected_symbol);
@@ -421,8 +405,7 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			//First borrow
 			// DOT
 			let dot_borrowed_asset = borrowed_assets.last().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_id, DOT);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_name, expected_name);
 			assert_eq!(dot_borrowed_asset.asset_info.asset_symbol, expected_symbol);
@@ -435,8 +418,7 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			assert_eq!(dot_borrowed_asset.borrowed, dot_borrow_amount_1);
 			//KSM
 			let ksm_collateral_asset = collateral_assets.last().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_id, KSM);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_name, expected_name);
 			assert_eq!(ksm_collateral_asset.asset_info.asset_symbol, expected_symbol);
@@ -446,8 +428,7 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			//Second borrow
 			//KSM
 			let ksm_borrowed_asset = borrowed_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_borrowed_asset.asset_info.asset_id, KSM);
 			assert_eq!(ksm_borrowed_asset.asset_info.asset_name, expected_name);
 			assert_eq!(ksm_borrowed_asset.asset_info.asset_symbol, expected_symbol);
@@ -460,8 +441,7 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			assert_eq!(ksm_borrowed_asset.borrowed, ksm_borrow_amount_2);
 			//DOT
 			let dot_collateral_asset = collateral_assets.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_collateral_asset.asset_info.asset_id, DOT);
 			assert_eq!(dot_collateral_asset.asset_info.asset_name, expected_name);
 			assert_eq!(dot_collateral_asset.asset_info.asset_symbol, expected_symbol);
@@ -472,8 +452,8 @@ fn test_get_asset_wise_borrows_collaterals_with_two_borrows() {
 			assert_eq!(total_borrow, dot_borrowed_asset.borrowed + ksm_borrowed_asset.borrowed * 2);
 			assert_eq!(
 				total_collateral,
-				ksm_collateral_asset.asset_info.balance * 2
-					+ dot_collateral_asset.asset_info.balance
+				ksm_collateral_asset.asset_info.balance * 2 +
+					dot_collateral_asset.asset_info.balance
 			);
 		});
 }
@@ -554,8 +534,7 @@ fn test_get_lending_pools_without_params() {
 
 			// DOT
 			let dot_lending_pool = lending_pools.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_lending_pool.asset_id, DOT);
 			assert_eq!(dot_lending_pool.asset, expected_name);
 			assert_eq!(dot_lending_pool.asset_symbol, expected_symbol);
@@ -569,8 +548,7 @@ fn test_get_lending_pools_without_params() {
 
 			//KSM
 			let ksm_lending_pool = lending_pools.last().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_lending_pool.asset_id, KSM);
 			assert_eq!(ksm_lending_pool.asset, expected_name);
 			assert_eq!(ksm_lending_pool.asset_symbol, expected_symbol);
@@ -586,10 +564,9 @@ fn test_get_lending_pools_without_params() {
 			// 2000
 			assert_eq!(
 				totals.total_supply,
-				initial_balance * 2 + initial_balance
-					- dot_borrow_amount_1
-					- ksm_borrow_amount_2 * 2
-					+ ksm_supplied * 2
+				initial_balance * 2 + initial_balance -
+					dot_borrow_amount_1 - ksm_borrow_amount_2 * 2 +
+					ksm_supplied * 2
 			);
 			assert_eq!(totals.total_borrow, ksm_borrow_amount_2 * 2 + dot_borrow_amount_1);
 		});
@@ -671,8 +648,7 @@ fn test_get_lending_pools_with_asset_param() {
 
 			// DOT
 			let dot_lending_pool = lending_pools.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_lending_pool.asset_id, DOT);
 			assert_eq!(dot_lending_pool.asset, expected_name);
 			assert_eq!(dot_lending_pool.asset_symbol, expected_symbol);
@@ -760,8 +736,7 @@ fn test_get_lending_pools_with_account_and_asset() {
 			assert_eq!(lending_pools.len(), 1);
 			// DOT
 			let dot_lending_pool = lending_pools.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(DOT);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(DOT);
 			assert_eq!(dot_lending_pool.asset_id, DOT);
 			assert_eq!(dot_lending_pool.asset, expected_name);
 			assert_eq!(dot_lending_pool.asset_symbol, expected_symbol);
@@ -779,8 +754,7 @@ fn test_get_lending_pools_with_account_and_asset() {
 			assert_eq!(lending_pools.len(), 1);
 			// KSM
 			let ksm_lending_pool = lending_pools.first().unwrap();
-			let (expected_name, expected_decimals, expected_symbol) =
-				Lending::get_metadata(KSM);
+			let (expected_name, expected_decimals, expected_symbol) = Lending::get_metadata(KSM);
 			assert_eq!(ksm_lending_pool.asset_id, KSM);
 			assert_eq!(ksm_lending_pool.asset, expected_name);
 			assert_eq!(ksm_lending_pool.asset_symbol, expected_symbol);
@@ -789,11 +763,16 @@ fn test_get_lending_pools_with_account_and_asset() {
 			assert_ne!(ksm_lending_pool.utilization, FixedU128::zero());
 			assert_ne!(ksm_lending_pool.borrow_apy, FixedU128::zero());
 			assert_ne!(ksm_lending_pool.supply_apy, FixedU128::zero());
-			assert_eq!(ksm_lending_pool.user_supplied_balance, Some(initial_balance + ksm_supplied));
-			assert_eq!(ksm_lending_pool.user_asset_balance, Some(1_000_000 + ksm_borrow_amount_2 - ksm_supplied - initial_balance));
+			assert_eq!(
+				ksm_lending_pool.user_supplied_balance,
+				Some(initial_balance + ksm_supplied)
+			);
+			assert_eq!(
+				ksm_lending_pool.user_asset_balance,
+				Some(1_000_000 + ksm_borrow_amount_2 - ksm_supplied - initial_balance)
+			);
 			assert_eq!(totals.total_supply, initial_balance + ksm_supplied - ksm_borrow_amount_2);
 			assert_eq!(totals.total_borrow, ksm_borrow_amount_2);
-
 		});
 }
 
@@ -825,8 +804,7 @@ fn test_get_estimate_collateral_amount() {
 				USDT,
 				FixedU128::from_rational(5, 1),
 			));
-			let estimate_collateral_amount =
-				Lending::estimate_collateral_amount(DOT, 100, KSM);
+			let estimate_collateral_amount = Lending::estimate_collateral_amount(DOT, 100, KSM);
 
 			assert_ok!(&estimate_collateral_amount);
 
