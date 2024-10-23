@@ -35,8 +35,8 @@ fn test_supply_succeeds_for_activated_lending_pool() {
 			System::assert_last_event(
 				Event::LiquiditySupplied { who: ALICE, asset: DOT, balance: supply_amount }.into(),
 			);
-			assert!(System::events().iter().any(|record| record.event
-				== Event::LPTokenMinted {
+			assert!(System::events().iter().any(|record| record.event ==
+				Event::LPTokenMinted {
 					who: ALICE,
 					asset: LENDING_POOL_TOKEN,
 					balance: amount

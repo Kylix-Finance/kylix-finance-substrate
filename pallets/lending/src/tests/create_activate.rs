@@ -22,13 +22,13 @@ fn test_create_lending_pool_succeeds_for_new_asset() {
 			assert!(Lending::reserve_pools(asset_pool).is_some());
 
 			let events = System::events();
-			assert!(events.iter().any(|record| record.event
-				== Event::LendingPoolAdded { who: ALICE, asset: NEW_ASSET }.into()));
-			assert!(events.iter().any(|record| record.event
-				== Event::LiquiditySupplied { who: ALICE, asset: NEW_ASSET, balance: amount }
+			assert!(events.iter().any(|record| record.event ==
+				Event::LendingPoolAdded { who: ALICE, asset: NEW_ASSET }.into()));
+			assert!(events.iter().any(|record| record.event ==
+				Event::LiquiditySupplied { who: ALICE, asset: NEW_ASSET, balance: amount }
 					.into()));
-			assert!(events.iter().any(|record| record.event
-				== Event::LPTokenMinted {
+			assert!(events.iter().any(|record| record.event ==
+				Event::LPTokenMinted {
 					who: ALICE,
 					asset: LENDING_POOL_TOKEN,
 					balance: amount
